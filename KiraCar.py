@@ -1,6 +1,38 @@
 import streamlit as st
 import pandas as pd
 import requests
+import streamlit as st
+import pandas as pd
+import requests
+
+# --- 1. ส่วนตั้งค่า URL (วางไว้บนสุด) ---
+FORM_URL = "https://docs.google.com/forms/d/e/.../formResponse"
+SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/.../pub?output=csv"
+
+# --- 2. วางโค้ดฟังก์ชันที่คุณถามไว้ตรงนี้ครับ ---
+def save_to_google_form(model, buy_price, repair_cost, status, sell_price):
+    payload = {
+        "entry.1392091793": model,
+        "entry.1772417832": buy_price,
+        "entry.499287053": repair_cost,
+        "entry.50844596": status,
+        "entry.1300688537": sell_price,
+    }
+    try:
+        # ใช้ requests.post เพื่อส่งข้อมูลไปที่ Google Form
+        response = requests.post(FORM_URL, data=payload)
+        return True # ถ้าส่งสำเร็จ
+    except:
+        return False # ถ้าส่งไม่สำเร็จ
+
+# --- 3. ส่วนการทำงานของหน้าเว็บ (เรียกใช้ฟังก์ชันด้านบน) ---
+st.title("KiraCar Pro")
+
+# เมื่อผู้ใช้กดปุ่มในฟอร์ม เราจะเรียกใช้ฟังก์ชันที่เราวางไว้ด้านบนแบบนี้:
+if st.button("บันทึกข้อมูล"):
+    success = save_to_google_form(model, buy, repair, status, sell) # เรียกใช้งาน
+    if success:
+        st.success("บันทึกสำเร็จ!")
 import plotly.express as px
 from datetime import datetime
 
@@ -125,3 +157,4 @@ elif menu == "🔎 ค้นหาและกรองข้อมูล":
 
 st.sidebar.markdown("---")
 st.sidebar.caption("KiraCar Pro Plus v2.0")
+
