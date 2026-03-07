@@ -4,7 +4,33 @@ import requests
 import streamlit as st
 import pandas as pd
 import requests
+import streamlit as st
+import pandas as pd
+import requests
 
+# --- ส่วนที่ 1: วางตัวแปร URL ---
+FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSeX3tFW6TrfVY1MbWXFW1WzzpeIefrRwwg75HynBd2Mnkg06g/formResponse"
+SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRTaXnMfRxy-JdgCp4rCqJzdUES16l77D8_Okbf-bQnjxnu5HeRyS5agIokGCfG_3x3oCK7VCdlGXG2/pub?gid=754879556&single=true&output=csv"
+
+# --- ส่วนที่ 2: วางฟังก์ชันนี้ไว้ตรงนี้ (Copy ไปแปะได้เลย) ---
+def save_to_google_form(model, buy_price, repair_cost, status, sell_price):
+    payload = {
+        "entry.1392091793": model,
+        "entry.1772417832": buy_price,
+        "entry.499287053": repair_cost,
+        "entry.50844596": status,
+        "entry.1300688537": sell_price,
+    }
+    try:
+        # ส่งข้อมูลแบบเงียบๆ ไม่ต้อง Login
+        requests.post(FORM_URL, data=payload)
+        return True
+    except:
+        return False
+
+# --- ส่วนที่ 3: เริ่มหน้าตาโปรแกรม ---
+st.title("🚗 KiraCar Pro Management")
+# ... โค้ดส่วนที่เหลือ ...
 # --- 1. ส่วนตั้งค่า URL (วางไว้บนสุด) ---
 FORM_URL = "https://docs.google.com/forms/d/e/.../formResponse"
 SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/.../pub?output=csv"
@@ -157,4 +183,5 @@ elif menu == "🔎 ค้นหาและกรองข้อมูล":
 
 st.sidebar.markdown("---")
 st.sidebar.caption("KiraCar Pro Plus v2.0")
+
 
