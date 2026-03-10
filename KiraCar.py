@@ -98,14 +98,19 @@ elif menu == "➕ บันทึกรถเข้าใหม่":
             else:
                 st.warning("กรุณากรอกชื่อรุ่นรถ")
 
-# --- 3. หน้าลบข้อมูล ---
+# --- 3. หน้าลบข้อมูลรถ ---
 elif menu == "🗑️ ลบข้อมูลรถ":
     st.title("🗑️ จัดการลบข้อมูล")
     st.warning("ระวัง! การลบข้อมูลจะไม่สามารถกู้คืนได้")
     
     if not df.empty:
-        # สร้างตัวเลือกจากชื่อรถและ ID
+        # ย่อหน้าให้ตรงกัน (ใช้ 4 ช่องว่าง หรือ 1 Tab ให้เหมือนกันทั้งบล็อก)
         options = df.apply(lambda x: f"ID: {x['ID']} | {x['ยี่ห้อ/รุ่น']}", axis=1).tolist()
         target = st.selectbox("เลือกรายการรถที่ต้องการลบออกจากระบบ", options)
-      target_id = target.split(" | ")[0].split(": ")[1]
-
+        
+        # บรรทัดเจ้าปัญหา (เช็คช่องว่างข้างหน้าให้ตรงกับบรรทัด target ด้านบน)
+        target_id = target.split(" | ")[0].split(": ")[1]
+        
+        if st.button("🚨 ยืนยันการลบข้อมูล"):
+            delete_cmd = {"action": "delete", "id": target_id}
+            response = requests.post(SCRIPT_URL, json=delete_cmd)
