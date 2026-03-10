@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 from datetime import datetime
-
+import time  # <--- เพิ่มบรรทัดที่ 5: นำเข้า time เพื่อใช้สุ่มลิงก์
 # 1. ตั้งค่า URL (ใช้ตัวที่คุณส่งมาให้)
 SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzDCoF0_s2xNegdr_AImYaF1ZZauURohOsQuwG75Tn2fio_ZyZfua4pgLy3mrIcVkbuHQ/exec"
 
@@ -10,7 +10,7 @@ SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzDCoF0_s2xNegdr_AImYaF1ZZ
 # ให้ก๊อปปี้รหัสยาวๆ ในลิงก์ Google Sheets ของคุณมาใส่ตรง SHEET_ID นี้ครับ
 # แก้ไขบรรทัดที่ 11 เป็นแบบนี้เป๊ะๆ นะครับ
 SHEET_ID = "1xQqrXTZ5lDCPuRcNfYDUjLqmZ3PVNtbW4s9Ot1ejHYo"
-SHEET_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv"
+SHEET_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&t={time.time()}"
 
 st.set_page_config(page_title="KiraCar System", layout="wide", page_icon="🚗")
 
@@ -81,4 +81,5 @@ elif menu == "➕ บันทึกรถเข้าใหม่":
                     st.error(f"❌ เกิดข้อผิดพลาดในการเชื่อมต่อ: {e}")
             else:
                 st.warning("กรุณากรอกชื่อรุ่นรถด้วยครับ")
+
 
