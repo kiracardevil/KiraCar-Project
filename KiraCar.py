@@ -107,4 +107,5 @@ elif menu == "🗑️ ลบข้อมูลรถ":
         # สร้างตัวเลือกจากชื่อรถและ ID
         options = df.apply(lambda x: f"ID: {x['ID']} | {x['ยี่ห้อ/รุ่น']}", axis=1).tolist()
         target = st.selectbox("เลือกรายการรถที่ต้องการลบออกจากระบบ", options)
-        target_id = target.split(" | ")[0].
+      target_id = target.split(" | ")[0].split(": ")[1]
+
