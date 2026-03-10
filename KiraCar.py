@@ -64,11 +64,22 @@ if menu == "💎 แผงควบคุม BI":
     
     # กราฟวิเคราะห์
     c1, c2 = st.columns([1, 1])
-    with c1:
+with c1:
         st.subheader("📊 กำไรแยกตามเกรดรถ (A/B/C)")
-        if 'เกรดรถ' in df.columns:
-            fig_grade = px.sunburst(df, path=['เกรดรถ', 'สถานะ'], values='กำไรสุทธิ', color='เกรดรถ')
-            st.plotly_chart(fig_grade, use_container_width=True)
+        # ตรวจสอบว่ามีคอลัมน์ 'เกรดรถ' และข้อมูลไม่ว่าง
+        if 'เกรดรถ' in df.columns and not df['เกรดรถ'].isnull().all():
+            try:
+                # เติมค่าว่างด้วย "N/A" เพื่อป้องกันกราฟพัง
+                temp_df = df.copy()
+                temp_df['เกรดรถ'] = temp_df['เกรดรถ'].fillna('N/A')
+                temp_df['สถานะ'] = temp_df['สถานะ'].fillna('N/A')
+                
+                fig_grade = px.sunburst(temp_df, path=['เกรดรถ', 'สถานะ'], values='กำไรสุทธิ', color='เกรดรถ')
+                st.plotly_chart(fig_grade, use_container_width=True)
+            except Exception as e:
+                st.info("เพิ่มข้อมูลเกรดรถในเมนูบันทึก เพื่อแสดงกราฟวิเคราะห์เชิงลึก")
+        else:
+            st.info("💡 แนะนำ: เพิ่มคอลัมน์ 'เกรดรถ' ใน Google Sheets เพื่อดูการวิเคราะห์นี้")
     with c2:
         st.subheader("🔥 Inventory Velocity (ยี่ห้อไหนขายไว)")
         if not df.empty:
@@ -152,3 +163,4 @@ elif menu == "🗑️ ล้างฐานข้อมูล":
         st.error(f"ลบข้อมูล ID {tid} เรียบร้อย")
         time.sleep(1)
         st.rerun()
+
