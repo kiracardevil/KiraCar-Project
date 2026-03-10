@@ -64,7 +64,7 @@ if menu == "💎 แผงควบคุม BI":
     
     # กราฟวิเคราะห์
     c1, c2 = st.columns([1, 1])
-with c1:
+    with c1:
         st.subheader("📊 กำไรแยกตามเกรดรถ (A/B/C)")
         # ตรวจสอบว่ามีคอลัมน์ 'เกรดรถ' และข้อมูลไม่ว่าง
         if 'เกรดรถ' in df.columns and not df['เกรดรถ'].isnull().all():
@@ -163,4 +163,5 @@ elif menu == "🗑️ ล้างฐานข้อมูล":
         st.error(f"ลบข้อมูล ID {tid} เรียบร้อย")
         time.sleep(1)
         st.rerun()
+
 
