@@ -182,6 +182,49 @@ elif menu == "📋 รายงานและสรุปผล":
         print_df = df[df['สถานะ'] == 'พร้อมขาย'] if report_type == "เฉพาะรถพร้อมขาย" else df
 
         if not print_df.empty:
+            display_df = print_df[['ID', 'ยี่ห้อ/รุ่น', 'เกรดรถ', 'สถานะ', 'ต้นทุนรวม', 'ราคาขาย', 'หมายเหตุ']].copy()
+            
+            # จัดรูปแบบตัวเลขให้มีคอมม่า
+            display_df['ต้นทุนรวม'] = display_df['ต้นทุนรวม'].apply(lambda x: f"{x:,.0f}")
+            display_df['ราคาขาย'] = display_df['ราคาขาย'].apply(lambda x: f"{x:,.0f}")
+            
+            # ตั้งลำดับเริ่มที่ 1
+            display_df.index = range(1, len(display_df) + 1)
+            
+            # --- ฟังก์ชันกำหนดสีตามเงื่อนไขที่คุณต้องการ ---
+            def color_rows(row):
+                # สีสถานะ
+                if row['สถานะ'] == 'กำลังซ่อม':
+                    s_color = 'color: red; font-weight: bold'
+                elif row['สถานะ'] == 'พร้อมขาย':
+                    s_color = 'color: green; font-weight: bold'
+                else: # ขายแล้ว
+                    s_color = 'color: blue; font-weight: bold'
+                
+                # สร้าง List ของสไตล์ในแต่ละคอลัมน์
+                styles = [''] * len(row)
+                styles[3] = s_color          # คอลัมน์สถานะ (ตำแหน่งที่ 3)
+                styles[5] = 'color: green; font-weight: bold' # ราคาขาย (ตำแหน่งที่ 5)
+                styles[6] = 'color: red'    # หมายเหตุ (ตำแหน่งที่ 6)
+                return styles
+
+            # แสดงตารางแบบมีสี
+            st.dataframe(display_df.style.apply(color_rows, axis=1), use_container_width=True)
+            
+            st.download_button("📥 Download Report (CSV)", display_df.to_csv(index=True).encode('utf-8-sig'), "car_report.csv", "text/csv")
+        else:
+            st.warning("ไม่มีข้อมูล")
+elif menu == "📋 รายงานและสรุปผล":
+    st.title("📋 รายงานและสรุปผลธุรกิจ")
+    tab1, tab2 = st.tabs(["📄 สรุปรายการรถ (Print)", "📈 สรุปยอดขายประจำเดือน"])
+    
+    with tab1:
+        st.subheader("🖨️ รายงานสต็อกรถยนต์")
+        report_type = st.radio("เลือกดูรายการ:", ["เฉพาะรถพร้อมขาย", "รถทั้งหมด"], horizontal=True)
+        
+        print_df = df[df['สถานะ'] == 'พร้อมขาย'] if report_type == "เฉพาะรถพร้อมขาย" else df
+
+        if not print_df.empty:
             # ฟังก์ชันช่วยกำหนดสีสถานะ
             def apply_style(row):
                 # สีสถานะ
@@ -246,6 +289,7 @@ elif menu == "🗑️ จัดการฐานข้อมูล":
             if st.button("🚨 ลบถาวร", type="primary"):
                 requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
                 st.error("ลบสำเร็จ"); st.cache_data.clear(); time.sleep(1); st.rerun()
+
 
 
 
