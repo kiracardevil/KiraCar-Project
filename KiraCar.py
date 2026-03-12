@@ -160,13 +160,36 @@ elif menu == "📥 บันทึกรถเข้า":
 elif menu == "🗑️ ล้างฐานข้อมูล":
     st.title("🗑️ Database Management")
     if not df.empty:
-        target_list = df.apply(lambda x: f"ID: {x['ID']} | {x['ยี่ห้อ/รุ่น']}", axis=1).tolist()
-        target = st.selectbox("เลือกข้อมูลที่จะลบ", target_list)
-        if st.button("🚨 ยืนยันการลบ"):
-            tid = target.split(" | ")[0].split(": ")[1]
-            requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
-            st.error(f"ลบ ID {tid} เรียบร้อย")
-            time.sleep(1)
-            st.rerun()
-
+        st.warning("ระวัง: การลบข้อมูลจะไม่สามารถกู้คืนได้")
+        
+        # 1. เลือกรายการ
+        target_list = df.apply(lambda x: f"ID: {x['ID']} | {x['ยี่ห้อ/รุ่น']} (ทุน: {x['ต้นทุนรวม']:,.0f})", axis=1).tolist()
+        target = st.selectbox("เลือกข้อมูลที่ต้องการลบ:", target_list)
+        
+        # 2. กางรายละเอียดก่อนลบเพื่อความชัวร์
+        tid = target.split(" | ")[0].split(": ")[1]
+        target_row = df[df['ID'].astype(str) == tid].iloc[0]
+        
+        st.info(f"รายการที่เลือก: {target_row['ยี่ห้อ/รุ่น']} | สถานะ: {target_row['สถานะ']}")
+        
+        # 3. ระบบยืนยันตัวตน (Checkmark ยืนยัน)
+        confirm_check = st.checkbox(f"ยืนยันว่าต้องการลบ ID {tid} นี้ออกจากระบบจริงๆ")
+        
+        if confirm_check:
+            if st.button("🚨 ยืนยันการลบถาวร", type="primary"):
+                try:
+                    # ส่งคำสั่งลบไปยัง Apps Script
+                    response = requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
+                    if response.status_code == 200:
+                        st.error(f"ทำการลบข้อมูล ID {tid} เรียบร้อยแล้ว")
+                        time.sleep(1.5)
+                        st.rerun()
+                    else:
+                        st.error("เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์")
+                except Exception as e:
+                    st.error(f"เกิดข้อผิดพลาด: {e}")
+        else:
+            st.info("กรุณาติ๊กถูกที่ช่องยืนยันด้านบนเพื่อปลดล็อคปุ่มลบ")
+    else:
+        st.info("ไม่มีข้อมูลในฐานข้อมูล")
 
