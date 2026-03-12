@@ -5,6 +5,53 @@ from datetime import datetime
 import time
 import plotly.express as px
 
+# --- CSS Design ---
+st.markdown("""
+    <style>
+    /* พื้นหลังหลัก */
+    .main { background-color: #f5f7f9; }
+    
+    /* ปรับแต่ง Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #1a1c23; /* สีดำเข้มแบบเดิม */
+    }
+    
+    /* บังคับสีตัวอักษรใน Sidebar ให้ขาวชัดเจน */
+    [data-testid="stSidebar"] .st-emotion-cache-17fal9r, 
+    [data-testid="stSidebar"] p, 
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] label {
+        color: #FFFFFF !important;
+        font-weight: 500; /* เพิ่มความหนาเล็กน้อยให้อ่านง่าย */
+    }
+
+    /* ปรับสีปุ่ม Radio (เมนู) ขณะเลือกและไม่เลือก */
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {
+        color: #FFFFFF !important;
+        background-color: rgba(255, 255, 255, 0.05); /* ใส่พื้นหลังจางๆ ให้ดูเป็นปุ่ม */
+        margin-bottom: 5px;
+        padding: 8px 15px;
+        border-radius: 8px;
+    }
+
+    /* สเปคพิเศษสำหรับตัวที่กำลังถูกเลือก (Active) */
+    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] p {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #00d4ff !important; /* สีฟ้าสว่างสำหรับหัวข้อ */
+    }
+
+    /* การ์ด Metric ในหน้า Dashboard */
+    .stMetric { 
+        background-color: #ffffff; 
+        padding: 15px; 
+        border-radius: 10px; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 # --- CONFIG ---
 SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwF29emS2iWI9Z0hncYaCRe5hQn8RUw2U1mwzfPL4dUzDoH-k78_8SfDTukm9QIDoT7IQ/exec"
 SHEET_ID = "1xQqrXTZ5lDCPuRcNfYDUjLqmZ3PVNtbW4s9Ot1ejHYo"
@@ -196,5 +243,6 @@ elif menu == "🗑️ จัดการฐานข้อมูล":
             if st.button("🚨 ลบถาวร", type="primary"):
                 requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
                 st.error("ลบสำเร็จ"); st.cache_data.clear(); time.sleep(1); st.rerun()
+
 
 
