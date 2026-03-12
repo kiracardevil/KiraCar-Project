@@ -216,4 +216,54 @@ elif menu == "🗑️ ล้างฐานข้อมูล":
     else:
         st.info("ไม่มีข้อมูลในฐานข้อมูล")
 
+# เพิ่ม "🔄 อัปเดตสถานะรถ" เข้าไปในลิสต์เมนู sidebar ก่อนนะครับ
+# menu = st.sidebar.radio("เมนูบริหารจัดการ", ["...", "🔄 อัปเดตสถานะรถ", "..."])
+
+# --- 5. อัปเดตสถานะรถ ---
+elif menu == "🔄 อัปเดตสถานะรถ":
+    st.title("🔄 อัปเดตสถานะและบันทึกการขาย")
+    if not df.empty:
+        # 1. เลือกรถที่ต้องการอัปเดต
+        target_list = df.apply(lambda x: f"ID: {x['ID']} | {x['ยี่ห้อ/รุ่น']} (สถานะปัจจุบัน: {x['สถานะ']})", axis=1).tolist()
+        target = st.selectbox("เลือกรถที่ต้องการเปลี่ยนสถานะ:", target_list)
+        
+        tid = target.split(" | ")[0].split(": ")[1]
+        target_row = df[df['ID'].astype(str) == tid].iloc[0]
+
+        with st.form("update_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                new_status = st.selectbox("เปลี่ยนสถานะเป็น:", ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"], 
+                                          index=["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"].index(target_row['สถาน e'] if target_row['สถานะ'] in ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"] else 0))
+                new_sell_price = st.number_input("ราคาขายจริง (แก้ไขได้)", value=float(target_row['ราคาขาย']), min_value=0.0)
+            
+            with col2:
+                new_fix_cost = st.number_input("ค่าซ่อมเพิ่มเติม (ถ้ามี)", value=float(target_row['ค่าซ่อม']), min_value=0.0)
+                new_note = st.text_area("อัปเดตหมายเหตุ", value=target_row['หมายเหตุ'])
+
+            if st.form_submit_button("✅ ยืนยันการอัปเดตข้อมูล"):
+                # คำนวณกำไรใหม่ทันที
+                total_cost = float(target_row['ต้นทุนซื้อ']) + new_fix_cost
+                new_profit = new_sell_price - total_cost if new_status == "ขายแล้ว" else 0
+                
+                # ส่งข้อมูลไปอัปเดต (ต้องใช้ฟังก์ชัน update ใน Apps Script)
+                update_data = {
+                    "action": "update",
+                    "id": tid,
+                    "status": new_status,
+                    "fix": new_fix_cost,
+                    "total_cost": total_cost,
+                    "sell": new_sell_price,
+                    "profit": new_profit,
+                    "note": new_note
+                }
+                
+                response = requests.post(SCRIPT_URL, json=update_data)
+                if response.status_code == 200:
+                    st.balloons()
+                    st.success(f"อัปเดต {target_row['ยี่ห้อ/รุ่น']} เป็น '{new_status}' เรียบร้อย!")
+                    time.sleep(1.5)
+                    st.rerun()
+    else:
+        st.info("ไม่มีข้อมูลรถในระบบ")
 
