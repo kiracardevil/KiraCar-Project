@@ -177,3 +177,65 @@ elif menu == "🗑️ จัดการฐานข้อมูล":
             st.error("ลบข้อมูลสำเร็จ"); st.cache_data.clear(); time.sleep(1); st.rerun()
 
 
+
+# --- เพิ่มเมนูใหม่ใน SIDEBAR ---
+menu = st.sidebar.radio("ระบบบริหารจัดการ", 
+                        ["📊 แผงควบคุม BI", "🔍 คลังรถยนต์", "📥 ลงทะเบียนรถเข้า", "🔄 อัปเดตสถานะ/ค่าซ่อม", "📋 รายงานและสรุปผล", "🗑️ จัดการฐานข้อมูล"])
+
+# --- 5. รายงานและสรุปผล (ฟีเจอร์ใหม่!) ---
+elif menu == "📋 รายงานและสรุปผล":
+    st.title("📋 รายงานและสรุปผลธุรกิจ")
+    
+    tab1, tab2 = st.tabs(["📄 สรุปรายการรถ (Print)", "📈 สรุปยอดขายประจำเดือน"])
+    
+    with tab1:
+        st.subheader("🖨️ สรุปรายการรถในคลัง (พร้อมพิมพ์)")
+        # เลือกเฉพาะรถที่ยังไม่ขาย หรือทั้งหมด
+        report_type = st.radio("เลือกดูรายการ:", ["เฉพาะรถพร้อมขาย", "รถทั้งหมด"], horizontal=True)
+        
+        if report_type == "เฉพาะรถพร้อมขาย":
+            print_df = df[df['สถานะ'] == 'พร้อมขาย']
+        else:
+            print_df = df
+
+        if not print_df.empty:
+            # จัดรูปแบบตารางให้สวยงามสำหรับการพิมพ์
+            display_df = print_df[['ID', 'ยี่ห้อ/รุ่น', 'เกรดรถ', 'สถานะ', 'ต้นทุนรวม', 'ราคาขาย', 'หมายเหตุ']].copy()
+            display_df['ต้นทุนรวม'] = display_df['ต้นทุนรวม'].apply(lambda x: f"{x:,.0f} ฿")
+            display_df['ราคาขาย'] = display_df['ราคาขาย'].apply(lambda x: f"{x:,.0f} ฿")
+            
+            st.dataframe(display_df, use_container_width=True, hide_index=True)
+            
+            st.info("💡 คำแนะนำ: คุณสามารถคลิกขวาที่ตารางแล้วเลือก 'Print' หรือใช้ปุ่ม 'Download as CSV' เพื่อนำไปเปิดใน Excel และสั่งพิมพ์ได้ทันทีครับ")
+            st.download_button(label="📥 ดาวน์โหลดรายการรถ (CSV)", data=display_df.to_csv(index=False).encode('utf-8-sig'), file_name=f'car_report_{datetime.now().strftime("%d%m%Y")}.csv', mime='text/csv')
+        else:
+            st.warning("ไม่มีข้อมูลรายการรถ")
+
+    with tab2:
+        st.subheader("📅 สรุปยอดขายประจำเดือน")
+        # กรองเฉพาะรถที่ขายแล้ว
+        sold_df = df[df['สถานะ'] == 'ขายแล้ว'].copy()
+        
+        if not sold_df.empty:
+            # แปลงวันที่เพื่อให้กรองตามเดือนได้
+            sold_df['เดือนที่ขาย'] = sold_df['วันที่บันทึก'].dt.strftime('%Y-%m')
+            month_list = sorted(sold_df['เดือนที่ขาย'].unique(), reverse=True)
+            selected_month = st.selectbox("เลือกเดือนที่ต้องการสรุป:", month_list)
+            
+            monthly_data = sold_df[sold_df['เดือนที่ขาย'] == selected_month]
+            
+            # สรุปตัวเลขสำคัญ
+            m_col1, m_col2, m_col3 = st.columns(3)
+            total_sales = monthly_data['ราคาขาย'].sum()
+            total_profit = monthly_data['กำไรสุทธิ'].sum()
+            car_count = len(monthly_data)
+            
+            m_col1.metric("🚗 จำนวนรถที่ขายได้", f"{car_count} คัน")
+            m_col2.metric("💰 ยอดขายรวม", f"{int(total_sales):,}")
+            m_col3.metric("📈 กำไรสุทธิรวม", f"{int(total_profit):,}", delta=f"{int(total_profit/car_count):,} ต่อคัน" if car_count > 0 else None)
+            
+            st.markdown("---")
+            st.write(f"**รายละเอียดรถที่ปิดการขายในเดือน {selected_month}:**")
+            st.table(monthly_data[['ID', 'ยี่ห้อ/รุ่น', 'เกรดรถ', 'ต้นทุนรวม', 'ราคาขาย', 'กำไรสุทธิ']].reset_index(drop=True))
+        else:
+            st.info("ยังไม่มีข้อมูลรถที่ 'ขายแล้ว' ในระบบ")
