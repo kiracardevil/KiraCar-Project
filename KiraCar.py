@@ -94,17 +94,30 @@ elif menu == "🔍 คลังรถยนต์":
     st.title("🔍 ค้นหาและวิเคราะห์สต็อก")
     search = st.text_input("พิมพ์รุ่นรถที่ต้องการค้นหา...")
     filtered = df[df['ยี่ห้อ/รุ่น'].str.contains(search, case=False)] if search else df
+    
     for _, row in filtered.iterrows():
-        with st.expander(f"ID: {row['ID']} | {row['ยี่ห้อ/รุ่น']} | เกรด: {row['เกรดรถ']} | {row['สถานะ']}"):
+        # กำหนดสีตามสถานะสำหรับหัวข้อ Expander
+        status_label = row['สถานะ']
+        if status_label == "พร้อมขาย":
+            display_status = f"🟢 {status_label}"
+        elif status_label == "กำลังซ่อม":
+            display_status = f"🔴 {status_label}"
+        else: # ขายแล้ว
+            display_status = f"🔵 {status_label}"
+
+        # แสดงผลกล่องข้อมูลรถ
+        with st.expander(f"ID: {row['ID']} | {row['ยี่ห้อ/รุ่น']} | เกรด: {row['เกรดรถ']} | {display_status}"):
             col1, col2 = st.columns([1, 2])
             with col1:
                 st.image(row['ลิงก์รูปภาพ'] if pd.notna(row['ลิงก์รูปภาพ']) else "https://via.placeholder.com/300x200")
             with col2:
+                # ใช้ markdown เพื่อใส่สีตัวอักษรในเนื้อหา
+                st.markdown(f"**สถานะ:** <span style='color:{'green' if status_label=='พร้อมขาย' else 'red' if status_label=='กำลังซ่อม' else 'blue'}; font-weight:bold;'>{status_label}</span>", unsafe_allow_html=True)
                 st.write(f"**ต้นทุนรวม:** {int(row['ต้นทุนรวม']):,} ฿")
-                st.write(f"**ราคาขาย:** {int(row['ราคาขาย']):,} ฿")
+                st.markdown(f"**ราคาขาย:** <span style='color:green; font-weight:bold;'>{int(row['ราคาขาย']):,} ฿</span>", unsafe_allow_html=True)
                 st.write(f"**กำไร:** {int(row['กำไรสุทธิ']):,} ฿")
-                st.write(f"**หมายเหตุ:** {row['หมายเหตุ']}")
-
+                st.markdown(f"**หมายเหตุ:** <span style='color:red;'>{row['หมายเหตุ']}</span>", unsafe_allow_html=True)
+                
 # --- 3. ลงทะเบียนรถเข้า ---
 elif menu == "📥 ลงทะเบียนรถเข้า":
     st.title("📥 บันทึกรถยนต์ใหม่")
@@ -214,5 +227,6 @@ elif menu == "🗑️ จัดการฐานข้อมูล":
             if st.button("🚨 ลบถาวร", type="primary"):
                 requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
                 st.error("ลบสำเร็จ"); st.cache_data.clear(); time.sleep(1); st.rerun()
+
 
 
