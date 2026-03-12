@@ -133,6 +133,9 @@ elif menu == "🔄 อัปเดตสถานะ/ค่าซ่อม":
 
 # --- 5. รายงานและสรุปผล ---
 elif menu == "📋 รายงานและสรุปผล":
+    # แก้ไขใน Tab 1: ก่อนบรรทัด st.table
+display_df.index = display_df.index + 1  # ขยับ 0 เป็น 1, 1 เป็น 2...
+st.table(display_df)
     st.title("📋 รายงานและสรุปผลธุรกิจ")
     tab1, tab2 = st.tabs(["📄 สรุปรายการรถ (Print)", "📈 สรุปยอดขายประจำเดือน"])
     
@@ -172,3 +175,4 @@ elif menu == "🗑️ จัดการฐานข้อมูล":
             if st.button("🚨 ลบถาวร", type="primary"):
                 requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
                 st.error("ลบสำเร็จ"); st.cache_data.clear(); time.sleep(1); st.rerun()
+
