@@ -133,23 +133,37 @@ elif menu == "🔄 อัปเดตสถานะ/ค่าซ่อม":
 
 # --- 5. รายงานและสรุปผล ---
 elif menu == "📋 รายงานและสรุปผล":
-    # แก้ไขใน Tab 1: ก่อนบรรทัด st.table
-display_df.index = display_df.index + 1  # ขยับ 0 เป็น 1, 1 เป็น 2...
-st.table(display_df)
     st.title("📋 รายงานและสรุปผลธุรกิจ")
     tab1, tab2 = st.tabs(["📄 สรุปรายการรถ (Print)", "📈 สรุปยอดขายประจำเดือน"])
     
     with tab1:
         st.subheader("🖨️ รายงานสต็อกรถยนต์")
         report_type = st.radio("เลือกดูรายการ:", ["เฉพาะรถพร้อมขาย", "รถทั้งหมด"], horizontal=True)
-        print_df = df[df['สถานะ'] == 'พร้อมขาย'] if report_type == "เฉพาะรถพร้อมขาย" else df
+        
+        # กรองข้อมูลตามที่เลือก
+        if report_type == "เฉพาะรถพร้อมขาย":
+            print_df = df[df['สถานะ'] == 'พร้อมขาย']
+        else:
+            print_df = df
+
         if not print_df.empty:
+            # เลือกคอลัมน์และจัดรูปแบบ
             display_df = print_df[['ID', 'ยี่ห้อ/รุ่น', 'เกรดรถ', 'สถานะ', 'ต้นทุนรวม', 'ราคาขาย', 'หมายเหตุ']].copy()
             for col in ['ต้นทุนรวม', 'ราคาขาย']:
                 display_df[col] = display_df[col].apply(lambda x: f"{x:,.0f}")
+            
+            # --- แก้ไขตรงนี้: ทำให้เลขลำดับเริ่มที่ 1 ---
+            display_df.index = range(1, len(display_df) + 1) 
+            
+            # แสดงผลแบบตารางสวยงาม
             st.table(display_df)
-            st.download_button("📥 Download Report (CSV)", display_df.to_csv(index=False).encode('utf-8-sig'), "car_report.csv", "text/csv")
-        else: st.warning("ไม่มีข้อมูล")
+            
+            st.download_button("📥 Download Report (CSV)", 
+                               display_df.to_csv(index=True).encode('utf-8-sig'), 
+                               "car_report.csv", 
+                               "text/csv")
+        else:
+            st.warning("ไม่มีข้อมูล")
 
     with tab2:
         st.subheader("📅 สรุปยอดขายรายเดือน")
@@ -158,12 +172,19 @@ st.table(display_df)
             sold_df['เดือนที่ขาย'] = sold_df['วันที่บันทึก'].dt.strftime('%Y-%m')
             month = st.selectbox("เลือกเดือน:", sorted(sold_df['เดือนที่ขาย'].unique(), reverse=True))
             monthly = sold_df[sold_df['เดือนที่ขาย'] == month]
+            
             m1, m2, m3 = st.columns(3)
             m1.metric("🚗 ขายได้", f"{len(monthly)} คัน")
             m2.metric("💰 ยอดขาย", f"{int(monthly['ราคาขาย'].sum()):,} ฿")
             m3.metric("📈 กำไร", f"{int(monthly['กำไรสุทธิ'].sum()):,} ฿")
-            st.dataframe(monthly[['ID', 'ยี่ห้อ/รุ่น', 'เกรดรถ', 'ต้นทุนรวม', 'ราคาขาย', 'กำไรสุทธิ']], use_container_width=True)
-        else: st.info("ยังไม่มีรายการที่ขายแล้ว")
+            
+            # ทำให้เลขลำดับในตารางเริ่มจาก 1 เช่นกัน
+            monthly_display = monthly[['ID', 'ยี่ห้อ/รุ่น', 'เกรดรถ', 'ต้นทุนรวม', 'ราคาขาย', 'กำไรสุทธิ']].copy()
+            monthly_display.index = range(1, len(monthly_display) + 1)
+            
+            st.table(monthly_display)
+        else:
+            st.info("ยังไม่มีรายการที่ขายแล้ว")
 
 # --- 6. จัดการฐานข้อมูล ---
 elif menu == "🗑️ จัดการฐานข้อมูล":
@@ -175,4 +196,5 @@ elif menu == "🗑️ จัดการฐานข้อมูล":
             if st.button("🚨 ลบถาวร", type="primary"):
                 requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
                 st.error("ลบสำเร็จ"); st.cache_data.clear(); time.sleep(1); st.rerun()
+
 
