@@ -1,15 +1,2 @@
-// เพิ่มส่วนนี้ในฟังก์ชัน doPost(e) ของ Apps Script
-if (data.action === "update") {
-  var id = data.id;
-  for (var i = 1; i < values.length; i++) {
-    if (values[i][0] == id) {
-      sheet.getRange(i + 1, 3).setValue(data.status);      // C: สถานะ
-      sheet.getRange(i + 1, 5).setValue(data.fix);         // E: ค่าซ่อม
-      sheet.getRange(i + 1, 6).setValue(data.total_cost);  // F: ต้นทุนรวม
-      sheet.getRange(i + 1, 7).setValue(data.sell);        // G: ราคาขาย
-      sheet.getRange(i + 1, 8).setValue(data.profit);      // H: กำไรสุทธิ
-      sheet.getRange(i + 1, 11).setValue(data.note);       // K: หมายเหตุ
-      return ContentService.createTextOutput("Success");
-    }
-  }
-}
+pandas
+requests
