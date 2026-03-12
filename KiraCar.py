@@ -6,7 +6,7 @@ import time
 import plotly.express as px
 
 # --- CONFIG ---
-SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwF29emS2iWI9Z0hncYaCRe5hQn8RUw2U1mwzfPL4dUzDoH-k78_8SfDTukm9QIDoT7IQ/exec"
+SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_UJcQh2yA5mj8g38RntjhcOakHf5ZlYtVbI-t6p3n79uTHQIuHodJdy9l56HCjThxAw/exec"
 SHEET_ID = "1xQqrXTZ5lDCPuRcNfYDUjLqmZ3PVNtbW4s9Ot1ejHYo"
 SHEET_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&t={time.time()}"
 
@@ -269,6 +269,7 @@ elif menu == "🗑️ จัดการฐานข้อมูล":
             if st.button("🚨 ลบถาวร", type="primary"):
                 requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
                 st.error("ลบสำเร็จ"); st.cache_data.clear(); time.sleep(1); st.rerun()
+
 
 
 
