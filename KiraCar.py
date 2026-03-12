@@ -29,9 +29,9 @@ def load_full_data():
         num_cols = ['ต้นทุนซื้อ', 'ค่าซ่อม', 'ต้นทุนรวม', 'ราคาขาย', 'กำไรสุทธิ']
         for col in num_cols:
             if col in data.columns:
-                data[col] = pd.to_numeric(data[col], errors='coerce').fillna(0)
+                data[col] = pd.to_numeric(data[col], errors='coerce').fillna(0).astype(int)
         data['วันที่บันทึก'] = pd.to_datetime(data['วันที่บันทึก'], errors='coerce')
-        data['อายุสต็อก'] = (datetime.now() - data['วันที่บันทึก']).dt.days.fillna(0)
+        data['อายุสต็อก'] = (datetime.now() - data['วันที่บันทึก']).dt.days.fillna(0).astype(int)
         return data
     except:
         return pd.DataFrame()
@@ -48,17 +48,20 @@ if menu == "📊 แผงควบคุม BI":
     st.title("💎 Business Intelligence Dashboard")
     if not df.empty:
         cols = st.columns(4)
-        cols[0].metric("💰 กำไรสะสมสุทธิ", f"{df['กำไรสุทธิ'].sum():,.0f} ฿")
-        cols[1].metric("📦 มูลค่าสต็อก (ทุน)", f"{df[df['สถานะ']!='ขายแล้ว']['ต้นทุนรวม'].sum():,.0f} ฿")
+        cols[0].metric("💰 กำไรสะสมสุทธิ", f"{int(df['กำไรสุทธิ'].sum()):,} ฿")
+        cols[1].metric("📦 มูลค่าสต็อก (ทุน)", f"{int(df[df['สถานะ']!='ขายแล้ว']['ต้นทุนรวม'].sum()):,} ฿")
         cols[2].metric("⏱️ อายุสต็อกเฉลี่ย", f"{df['อายุสต็อก'].mean():.1f} วัน")
         cols[3].metric("🚗 รถทั้งหมด", f"{len(df)} คัน")
         st.markdown("---")
         c1, c2 = st.columns(2)
         with c1:
             st.subheader("📈 สัดส่วนกำไรตามเกรดรถ")
-            if 'เกรดรถ' in df.columns:
-                fig = px.pie(df[df['กำไรสุทธิ']>0], values='กำไรสุทธิ', names='เกรดรถ', hole=0.4)
+            plot_df = df[df['กำไรสุทธิ']>0]
+            if not plot_df.empty:
+                fig = px.pie(plot_df, values='กำไรสุทธิ', names='เกรดรถ', hole=0.4)
                 st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("ยังไม่มีข้อมูลกำไร")
         with c2:
             st.subheader("📊 สถานะรถในคลัง")
             fig_status = px.bar(df['สถานะ'].value_counts())
@@ -75,9 +78,9 @@ elif menu == "🔍 คลังรถยนต์":
             with col1:
                 st.image(row['ลิงก์รูปภาพ'] if pd.notna(row['ลิงก์รูปภาพ']) else "https://via.placeholder.com/300x200")
             with col2:
-                st.write(f"**ต้นทุนรวม (F):** {row['ต้นทุนรวม']:,.0f} ฿")
-                st.write(f"**ราคาขาย:** {row['ราคาขาย']:,.0f} ฿")
-                st.write(f"**กำไร:** {row['กำไรสุทธิ']:,.0f} ฿")
+                st.write(f"**ต้นทุนรวม (F):** {int(row['ต้นทุนรวม']):,} ฿")
+                st.write(f"**ราคาขาย:** {int(row['ราคาขาย']):,} ฿")
+                st.write(f"**กำไร:** {int(row['กำไรสุทธิ']):,} ฿")
 
 # --- 3. บันทึกรถเข้า ---
 elif menu == "📥 ลงทะเบียนรถเข้า":
@@ -86,21 +89,25 @@ elif menu == "📥 ลงทะเบียนรถเข้า":
         name = st.text_input("ยี่ห้อ / รุ่น")
         c1, c2 = st.columns(2)
         with c1:
-            buy = st.number_input("ราคาทุนซื้อ (D)", min_value=0)
-            fix = st.number_input("ค่าซ่อม (E)", min_value=0)
+            buy = st.number_input("ราคาทุนซื้อ (D)", min_value=0, step=1, format="%d")
+            fix = st.number_input("ค่าซ่อม (E)", min_value=0, step=1, format="%d")
         with c2:
-            sell = st.number_input("ราคาขายเป้าหมาย (G)", min_value=0)
+            sell = st.number_input("ราคาขายเป้าหมาย (G)", min_value=0, step=1, format="%d")
             grade = st.selectbox("เกรดสภาพรถ (L)", ["A+", "A", "B+", "B", "C"])
         img = st.text_input("ลิงก์รูปภาพ (J)")
         note = st.text_area("หมายเหตุ (K)")
+        
         if st.form_submit_button("🚀 บันทึกข้อมูล"):
-            total_cost = buy + fix
-            profit = sell - total_cost if sell > 0 else 0
-            new_car = [len(df)+1, name, "กำลังซ่อม", buy, fix, total_cost, sell, profit, datetime.now().strftime("%Y-%m-%d"), img, note, grade]
+            # คำนวณเป็นจำนวนเต็ม
+            total_cost = int(buy + fix)
+            # ถ้าราคาขายเป็น 0 กำไรต้องเป็น 0
+            profit = int(sell - total_cost) if sell > 0 else 0
+            
+            new_car = [int(len(df)+1), name, "กำลังซ่อม", int(buy), int(fix), total_cost, int(sell), profit, datetime.now().strftime("%Y-%m-%d"), img, note, grade]
             requests.post(SCRIPT_URL, json=new_car)
-            st.success("บันทึกเรียบร้อย!"); st.cache_data.clear(); time.sleep(1); st.rerun()
+            st.success(f"บันทึกเรียบร้อย! ทุนรวม {total_cost:,} ฿"); st.cache_data.clear(); time.sleep(1); st.rerun()
 
-# --- 4. อัปเดตสถานะ/ค่าซ่อม (ฟีเจอร์ใหม่ที่ต้องการ) ---
+# --- 4. อัปเดตสถานะ/ค่าซ่อม ---
 elif menu == "🔄 อัปเดตสถานะ/ค่าซ่อม":
     st.title("🔄 อัปเดตสถานะและเพิ่มค่าซ่อม")
     if not df.empty:
@@ -114,17 +121,19 @@ elif menu == "🔄 อัปเดตสถานะ/ค่าซ่อม":
             with c1:
                 new_status = st.selectbox("เปลี่ยนสถานะเป็น:", ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"], 
                                           index=["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"].index(row['สถานะ']) if row['สถานะ'] in ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"] else 0)
-                new_sell = st.number_input("ปรับราคาขาย (G)", value=float(row['ราคาขาย']))
+                new_sell = st.number_input("ปรับราคาขาย (G)", value=int(row['ราคาขาย']), step=1, format="%d")
             with c2:
-                new_fix = st.number_input("ยอดค่าซ่อมรวมใหม่ (E)", value=float(row['ค่าซ่อม']))
+                new_fix = st.number_input("ยอดค่าซ่อมรวมใหม่ (E)", value=int(row['ค่าซ่อม']), step=1, format="%d")
                 new_note = st.text_area("บันทึกเพิ่มเติม (K)", value=str(row['หมายเหตุ']) if pd.notna(row['หมายเหตุ']) else "")
             
             if st.form_submit_button("✅ อัปเดตข้อมูล"):
-                total_f = float(row['ต้นทุนซื้อ']) + new_fix
-                profit_h = new_sell - total_f
-                payload = {"action": "update", "id": tid, "status": new_status, "fix": new_fix, "total_cost": total_f, "sell": new_sell, "profit": profit_h, "note": new_note}
+                total_f = int(row['ต้นทุนซื้อ'] + new_fix)
+                # ถ้าราคาขายใหม่เป็น 0 กำไรต้องเป็น 0
+                profit_h = int(new_sell - total_f) if new_sell > 0 else 0
+                
+                payload = {"action": "update", "id": tid, "status": new_status, "fix": int(new_fix), "total_cost": total_f, "sell": int(new_sell), "profit": profit_h, "note": new_note}
                 requests.post(SCRIPT_URL, json=payload)
-                st.success("อัปเดตสำเร็จ!"); st.cache_data.clear(); time.sleep(1); st.rerun()
+                st.success(f"อัปเดตสำเร็จ! ทุนรวมใหม่ {total_f:,} ฿"); st.cache_data.clear(); time.sleep(1); st.rerun()
 
 # --- 5. จัดการฐานข้อมูล ---
 elif menu == "🗑️ จัดการฐานข้อมูล":
