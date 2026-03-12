@@ -6,6 +6,11 @@ import time
 import plotly.express as px
 
 # --- CSS Design ---
+/* เพิ่มสไตล์สีสำหรับตาราง */
+    .status-green { color: #28a745 !important; font-weight: bold; }
+    .status-red { color: #dc3545 !important; font-weight: bold; }
+    .status-blue { color: #007bff !important; font-weight: bold; }
+    .price-green { color: #218838 !important; font-weight: bold; }
 st.markdown("""
     <style>
     /* พื้นหลังหลัก */
@@ -243,6 +248,7 @@ elif menu == "🗑️ จัดการฐานข้อมูล":
             if st.button("🚨 ลบถาวร", type="primary"):
                 requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
                 st.error("ลบสำเร็จ"); st.cache_data.clear(); time.sleep(1); st.rerun()
+
 
 
 
