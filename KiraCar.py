@@ -171,6 +171,23 @@ elif menu == "🔄 อัปเดตสถานะ/ค่าซ่อม":
                 st.success("อัปเดตสำเร็จ!"); st.cache_data.clear(); time.sleep(1); st.rerun()
 
 # --- 5. รายงานและสรุปผล ---
+# --- ปรับแต่งการแสดงผลตารางให้กระชับและแสดงได้ 10 คัน ---
+            st.data_editor(
+                display_df.style.apply(color_rows, axis=1),
+                use_container_width=True,
+                hide_index=False, # แสดงลำดับ 1-10 ที่เราสร้างไว้
+                disabled=True,    # ป้องกันการพิมพ์แก้ในหน้านี้
+                height=450,       # เพิ่มความสูงเพื่อให้เห็นรถได้ประมาณ 10 คันพอดี
+                column_config={
+                    "ID": st.column_config.Column(width="small"),
+                    "ยี่ห้อ/รุ่น": st.column_config.Column(width="medium"),
+                    "เกรดรถ": st.column_config.Column(width="small"),
+                    "สถานะ": st.column_config.Column(width="medium"),
+                    "ต้นทุนรวม": st.column_config.Column(width="medium"),
+                    "ราคาขาย": st.column_config.Column(width="medium"),
+                    "หมายเหตุ": st.column_config.Column(width="large"),
+                }
+            )
 elif menu == "📋 รายงานและสรุปผล":
     st.title("📋 รายงานและสรุปผลธุรกิจ")
     tab1, tab2 = st.tabs(["📄 สรุปรายการรถ (Print)", "📈 สรุปยอดขายประจำเดือน"])
@@ -289,6 +306,7 @@ elif menu == "🗑️ จัดการฐานข้อมูล":
             if st.button("🚨 ลบถาวร", type="primary"):
                 requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
                 st.error("ลบสำเร็จ"); st.cache_data.clear(); time.sleep(1); st.rerun()
+
 
 
 
