@@ -5,45 +5,6 @@ from datetime import datetime
 import time
 import plotly.express as px
 
-# --- CSS Design ---
-st.markdown("""
-    <style>
-    /* พื้นหลังหลัก */
-    .main { background-color: #f5f7f9; }
-    
-    /* ปรับแต่ง Sidebar */
-    [data-testid="stSidebar"] {
-        background-color: #1a1c23;
-    }
-    
-    /* บังคับสีตัวอักษรใน Sidebar ให้ขาวชัดเจน */
-    [data-testid="stSidebar"] p, 
-    [data-testid="stSidebar"] span,
-    [data-testid="stSidebar"] h1,
-    [data-testid="stSidebar"] label {
-        color: #FFFFFF !important;
-        font-weight: 500;
-    }
-
-    /* ปรับสีปุ่ม Radio (เมนู) */
-    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {
-        color: #FFFFFF !important;
-        background-color: rgba(255, 255, 255, 0.05);
-        margin-bottom: 5px;
-        padding: 8px 15px;
-        border-radius: 8px;
-    }
-
-    /* การ์ด Metric */
-    .stMetric { 
-        background-color: #ffffff; 
-        padding: 15px; 
-        border-radius: 10px; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
 # --- CONFIG ---
 SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwF29emS2iWI9Z0hncYaCRe5hQn8RUw2U1mwzfPL4dUzDoH-k78_8SfDTukm9QIDoT7IQ/exec"
 SHEET_ID = "1xQqrXTZ5lDCPuRcNfYDUjLqmZ3PVNtbW4s9Ot1ejHYo"
@@ -51,13 +12,19 @@ SHEET_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:
 
 st.set_page_config(page_title="KiraCar Enterprise AI", layout="wide", page_icon="🚀")
 
-# --- CSS Design ---
+# --- CSS Design (High Contrast Sidebar) ---
 st.markdown("""
     <style>
     .main { background-color: #f5f7f9; }
-    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    [data-testid="stSidebar"] { background-color: #1a1c23; color: white; }
-    .report-table { font-size: 14px; }
+    [data-testid="stSidebar"] { background-color: #1a1c23; }
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] label {
+        color: #FFFFFF !important; font-weight: 500;
+    }
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {
+        color: #FFFFFF !important; background-color: rgba(255, 255, 255, 0.05);
+        margin-bottom: 5px; padding: 8px 15px; border-radius: 8px;
+    }
+    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     </style>
     """, unsafe_allow_html=True)
 
@@ -78,6 +45,22 @@ def load_full_data():
 
 df = load_full_data()
 GRADE_OPTIONS = ["A+", "A", "B+", "B", "C+", "C", "D"]
+
+# --- FUNCTIONS (Global Color Logic) ---
+def apply_color_logic(row):
+    # สถานะ: พร้อมขาย(เขียว), กำลังซ่อม(แดง), ขายแล้ว(ฟ้า)
+    if row['สถานะ'] == 'กำลังซ่อม':
+        status_style = 'color: #dc3545; font-weight: bold'
+    elif row['สถานะ'] == 'พร้อมขาย':
+        status_style = 'color: #28a745; font-weight: bold'
+    else:
+        status_style = 'color: #007bff; font-weight: bold'
+    
+    styles = [''] * len(row)
+    styles[3] = status_style                         # คอลัมน์สถานะ
+    styles[5] = 'color: #28a745; font-weight: bold'  # ราคาขาย (เขียว)
+    styles[6] = 'color: #dc3545;'                    # หมายเหตุ (แดง)
+    return styles
 
 # --- SIDEBAR ---
 st.sidebar.title("💎 KiraCar BI")
@@ -171,109 +154,38 @@ elif menu == "🔄 อัปเดตสถานะ/ค่าซ่อม":
                 st.success("อัปเดตสำเร็จ!"); st.cache_data.clear(); time.sleep(1); st.rerun()
 
 # --- 5. รายงานและสรุปผล ---
-# --- ปรับแต่งการแสดงผลตารางให้กระชับและแสดงได้ 10 คัน ---
-            st.data_editor(
-                display_df.style.apply(color_rows, axis=1),
+elif menu == "📋 รายงานและสรุปผล":
+    st.title("📋 รายงานและสรุปผลธุรกิจ")
+    tab1, tab2 = st.tabs(["📄 สรุปรายการรถ (Print)", "📈 สรุปยอดขายประจำเดือน"])
+    
+    with tab1:
+        st.subheader("🖨️ รายงานสต็อกรถยนต์")
+        report_type = st.radio("เลือกดูรายการ:", ["เฉพาะรถพร้อมขาย", "รถทั้งหมด"], horizontal=True)
+        print_df = df[df['สถานะ'] == 'พร้อมขาย'] if report_type == "เฉพาะรถพร้อมขาย" else df
+
+        if not print_df.empty:
+            display_df = print_df[['ID', 'ยี่ห้อ/รุ่น', 'เกรดรถ', 'สถานะ', 'ต้นทุนรวม', 'ราคาขาย', 'หมายเหตุ']].copy()
+            display_df['ต้นทุนรวม'] = display_df['ต้นทุนรวม'].apply(lambda x: f"{x:,.0f}")
+            display_df['ราคาขาย'] = display_df['ราคาขาย'].apply(lambda x: f"{x:,.0f}")
+            display_df.index = range(1, len(display_df) + 1)
+
+            # ตารางแบบบีบช่องไฟ และสูงพอสำหรับ 10 คัน
+            st.dataframe(
+                display_df.style.apply(apply_color_logic, axis=1),
                 use_container_width=True,
-                hide_index=False, # แสดงลำดับ 1-10 ที่เราสร้างไว้
-                disabled=True,    # ป้องกันการพิมพ์แก้ในหน้านี้
-                height=450,       # เพิ่มความสูงเพื่อให้เห็นรถได้ประมาณ 10 คันพอดี
+                height=450, 
                 column_config={
                     "ID": st.column_config.Column(width="small"),
                     "ยี่ห้อ/รุ่น": st.column_config.Column(width="medium"),
                     "เกรดรถ": st.column_config.Column(width="small"),
-                    "สถานะ": st.column_config.Column(width="medium"),
-                    "ต้นทุนรวม": st.column_config.Column(width="medium"),
-                    "ราคาขาย": st.column_config.Column(width="medium"),
+                    "สถานะ": st.column_config.Column(width="small"),
+                    "ต้นทุนรวม": st.column_config.Column(width="small"),
+                    "ราคาขาย": st.column_config.Column(width="small"),
                     "หมายเหตุ": st.column_config.Column(width="large"),
                 }
             )
-elif menu == "📋 รายงานและสรุปผล":
-    st.title("📋 รายงานและสรุปผลธุรกิจ")
-    tab1, tab2 = st.tabs(["📄 สรุปรายการรถ (Print)", "📈 สรุปยอดขายประจำเดือน"])
-    
-    with tab1:
-        st.subheader("🖨️ รายงานสต็อกรถยนต์")
-        report_type = st.radio("เลือกดูรายการ:", ["เฉพาะรถพร้อมขาย", "รถทั้งหมด"], horizontal=True)
-        
-        print_df = df[df['สถานะ'] == 'พร้อมขาย'] if report_type == "เฉพาะรถพร้อมขาย" else df
-
-        if not print_df.empty:
-            display_df = print_df[['ID', 'ยี่ห้อ/รุ่น', 'เกรดรถ', 'สถานะ', 'ต้นทุนรวม', 'ราคาขาย', 'หมายเหตุ']].copy()
-            
-            # จัดรูปแบบตัวเลขให้มีคอมม่า
-            display_df['ต้นทุนรวม'] = display_df['ต้นทุนรวม'].apply(lambda x: f"{x:,.0f}")
-            display_df['ราคาขาย'] = display_df['ราคาขาย'].apply(lambda x: f"{x:,.0f}")
-            
-            # ตั้งลำดับเริ่มที่ 1
-            display_df.index = range(1, len(display_df) + 1)
-            
-            # --- ฟังก์ชันกำหนดสีตามเงื่อนไขที่คุณต้องการ ---
-            def color_rows(row):
-                # สีสถานะ
-                if row['สถานะ'] == 'กำลังซ่อม':
-                    s_color = 'color: red; font-weight: bold'
-                elif row['สถานะ'] == 'พร้อมขาย':
-                    s_color = 'color: green; font-weight: bold'
-                else: # ขายแล้ว
-                    s_color = 'color: blue; font-weight: bold'
-                
-                # สร้าง List ของสไตล์ในแต่ละคอลัมน์
-                styles = [''] * len(row)
-                styles[3] = s_color          # คอลัมน์สถานะ (ตำแหน่งที่ 3)
-                styles[5] = 'color: green; font-weight: bold' # ราคาขาย (ตำแหน่งที่ 5)
-                styles[6] = 'color: red'    # หมายเหตุ (ตำแหน่งที่ 6)
-                return styles
-
-            # แสดงตารางแบบมีสี
-            st.dataframe(display_df.style.apply(color_rows, axis=1), use_container_width=True)
-            
             st.download_button("📥 Download Report (CSV)", display_df.to_csv(index=True).encode('utf-8-sig'), "car_report.csv", "text/csv")
-        else:
-            st.warning("ไม่มีข้อมูล")
-elif menu == "📋 รายงานและสรุปผล":
-    st.title("📋 รายงานและสรุปผลธุรกิจ")
-    tab1, tab2 = st.tabs(["📄 สรุปรายการรถ (Print)", "📈 สรุปยอดขายประจำเดือน"])
-    
-    with tab1:
-        st.subheader("🖨️ รายงานสต็อกรถยนต์")
-        report_type = st.radio("เลือกดูรายการ:", ["เฉพาะรถพร้อมขาย", "รถทั้งหมด"], horizontal=True)
-        
-        print_df = df[df['สถานะ'] == 'พร้อมขาย'] if report_type == "เฉพาะรถพร้อมขาย" else df
-
-        if not print_df.empty:
-            # ฟังก์ชันช่วยกำหนดสีสถานะ
-            def apply_style(row):
-                # สีสถานะ
-                status_color = 'color: #dc3545' if row['สถานะ'] == 'กำลังซ่อม' else \
-                               'color: #28a745' if row['สถานะ'] == 'พร้อมขาย' else \
-                               'color: #007bff' # ขายแล้ว
-                
-                return [
-                    '', # ID
-                    '', # ยี่ห้อ/รุ่น
-                    '', # เกรดรถ
-                    f'{status_color}; font-weight: bold;', # สถานะ
-                    '', # ต้นทุนรวม
-                    'color: #28a745; font-weight: bold;', # ราคาขาย (เขียวเสมอ)
-                    'color: #dc3545;' # หมายเหตุ (แดงเสมอ)
-                ]
-
-            display_df = print_df[['ID', 'ยี่ห้อ/รุ่น', 'เกรดรถ', 'สถานะ', 'ต้นทุนรวม', 'ราคาขาย', 'หมายเหตุ']].copy()
-            
-            # จัดรูปแบบตัวเลข
-            display_df['ต้นทุนรวม'] = display_df['ต้นทุนรวม'].apply(lambda x: f"{x:,.0f}")
-            display_df['ราคาขาย'] = display_df['ราคาขาย'].apply(lambda x: f"{x:,.0f}")
-            
-            # ตั้งลำดับเริ่มที่ 1
-            display_df.index = range(1, len(display_df) + 1)
-            
-            # แสดงผลตารางพร้อมสี (ใช้ Styler)
-            st.dataframe(display_df.style.apply(apply_style, axis=1), use_container_width=True)
-            
-            st.download_button("📥 Download Report (CSV)", display_df.to_csv(index=True).encode('utf-8-sig'), "car_report.csv", "text/csv")
-        else:
-            st.warning("ไม่มีข้อมูล")
+        else: st.warning("ไม่มีข้อมูล")
 
     with tab2:
         st.subheader("📅 สรุปยอดขายรายเดือน")
@@ -282,19 +194,15 @@ elif menu == "📋 รายงานและสรุปผล":
             sold_df['เดือนที่ขาย'] = sold_df['วันที่บันทึก'].dt.strftime('%Y-%m')
             month = st.selectbox("เลือกเดือน:", sorted(sold_df['เดือนที่ขาย'].unique(), reverse=True))
             monthly = sold_df[sold_df['เดือนที่ขาย'] == month]
-            
             m1, m2, m3 = st.columns(3)
             m1.metric("🚗 ขายได้", f"{len(monthly)} คัน")
             m2.metric("💰 ยอดขาย", f"{int(monthly['ราคาขาย'].sum()):,} ฿")
             m3.metric("📈 กำไร", f"{int(monthly['กำไรสุทธิ'].sum()):,} ฿")
             
-            # ทำให้เลขลำดับในตารางเริ่มจาก 1 เช่นกัน
             monthly_display = monthly[['ID', 'ยี่ห้อ/รุ่น', 'เกรดรถ', 'ต้นทุนรวม', 'ราคาขาย', 'กำไรสุทธิ']].copy()
             monthly_display.index = range(1, len(monthly_display) + 1)
-            
             st.table(monthly_display)
-        else:
-            st.info("ยังไม่มีรายการที่ขายแล้ว")
+        else: st.info("ยังไม่มีรายการที่ขายแล้ว")
 
 # --- 6. จัดการฐานข้อมูล ---
 elif menu == "🗑️ จัดการฐานข้อมูล":
@@ -306,11 +214,3 @@ elif menu == "🗑️ จัดการฐานข้อมูล":
             if st.button("🚨 ลบถาวร", type="primary"):
                 requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
                 st.error("ลบสำเร็จ"); st.cache_data.clear(); time.sleep(1); st.rerun()
-
-
-
-
-
-
-
-
