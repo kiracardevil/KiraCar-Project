@@ -143,28 +143,70 @@ elif menu == "📥 ลงทะเบียนรถเข้า":
 elif menu == "🔄 อัปเดตสถานะ/ค่าซ่อม":
     st.title("🔄 อัปเดตสถานะและเกรดรถ")
     if not df.empty:
-        grade_col = 'เกรดรถ' if 'เกรดรถ' in df.columns else df.columns[-1]
-        car_list = df.apply(lambda x: f"{x['ID']} | {x['ยี่ห้อ/รุ่น']} (เกรด: {x[grade_col]})", axis=1).tolist()
+        # ล็อกชื่อคอลัมน์เกรดรถให้ชัดเจน
+        target_col = 'เกรดรถ'
+        
+        # สร้างรายชื่อรถให้เลือก
+        car_list = df.apply(lambda x: f"{x['ID']} | {x['ยี่ห้อ/รุ่น']} (เกรดเดิม: {x[target_col]})", axis=1).tolist()
         target = st.selectbox("เลือกรถที่ต้องการอัปเดต:", car_list)
         tid = target.split(" | ")[0]
+        
+        # ดึงข้อมูลของรถคันที่เลือกมาแสดงในฟอร์ม
         row = df[df['ID'].astype(str) == tid].iloc[0]
+        
         with st.form("update_form"):
             c1, c2 = st.columns(2)
             with c1:
-                new_status = st.selectbox("เปลี่ยนสถานะเป็น:", ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"], 
-                                          index=["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"].index(row['สถานะ']) if row['สถานะ'] in ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"] else 0)
+                # อัปเดตสถานะ
+                current_status = row['สถานะ']
+                status_index = ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"].index(current_status) if current_status in ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"] else 0
+                new_status = st.selectbox("เปลี่ยนสถานะเป็น:", ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"], index=status_index)
+                
                 new_sell = st.number_input("ปรับราคาขาย (G)", value=int(row['ราคาขาย']), step=1)
-                curr_grade = str(row[grade_col])
-                new_grade = st.selectbox("แก้ไขเกรดรถ (L):", GRADE_OPTIONS, index=GRADE_OPTIONS.index(curr_grade) if curr_grade in GRADE_OPTIONS else 5)
+                
+                # --- จุดที่แก้ไข: อัปเดตเกรดรถ ---
+                current_grade = str(row[target_col]).strip() # ล้างช่องว่างออก
+                # หาตำแหน่ง Index ของเกรดปัจจุบันในลิสต์ GRADE_OPTIONS
+                try:
+                    grade_index = GRADE_OPTIONS.index(current_grade)
+                except ValueError:
+                    grade_index = 1 # ถ้าหาไม่เจอให้ไปที่เกรด A เป็นค่าเริ่มต้น
+                
+                new_grade = st.selectbox("แก้ไขเกรดรถ (L):", GRADE_OPTIONS, index=grade_index)
+
             with c2:
                 new_fix = st.number_input("ยอดค่าซ่อมรวมใหม่ (E)", value=int(row['ค่าซ่อม']), step=1)
                 new_note = st.text_area("บันทึกเพิ่มเติม (K)", value=str(row['หมายเหตุ']) if pd.notna(row['หมายเหตุ']) else "")
+            
             if st.form_submit_button("✅ ยืนยันการอัปเดต"):
+                # คำนวณต้นทุนและกำไรใหม่ก่อนส่ง
                 total_f = int(row['ต้นทุนซื้อ'] + new_fix)
                 profit_h = int(new_sell - total_f) if new_sell > 0 else 0
-                payload = {"action": "update", "id": str(tid), "status": new_status, "fix": int(new_fix), "total_cost": total_f, "sell": int(new_sell), "profit": profit_h, "note": new_note, "grade": str(new_grade)}
-                requests.post(SCRIPT_URL, json=payload)
-                st.success("อัปเดตสำเร็จ!"); st.cache_data.clear(); time.sleep(1); st.rerun()
+                
+                # ส่งข้อมูลไปที่ Google Apps Script
+                payload = {
+                    "action": "update", 
+                    "id": str(tid), 
+                    "status": new_status, 
+                    "fix": int(new_fix), 
+                    "total_cost": total_f, 
+                    "sell": int(new_sell), 
+                    "profit": profit_h, 
+                    "note": new_note, 
+                    "grade": str(new_grade) # ส่งเกรดใหม่ไปที่คอลัมน์ L
+                }
+                
+                try:
+                    response = requests.post(SCRIPT_URL, json=payload)
+                    if response.status_code == 200:
+                        st.success(f"อัปเดต ID {tid} เรียบร้อยแล้ว (เกรดใหม่: {new_grade})")
+                        st.cache_data.clear()
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error("เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล")
+                except Exception as e:
+                    st.error(f"Error: {e}")
 
 # --- 5. รายงานและสรุปผล ---
 elif menu == "📋 รายงานและสรุปผล":
@@ -227,6 +269,7 @@ elif menu == "🗑️ จัดการฐานข้อมูล":
             if st.button("🚨 ลบถาวร", type="primary"):
                 requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
                 st.error("ลบสำเร็จ"); st.cache_data.clear(); time.sleep(1); st.rerun()
+
 
 
 
