@@ -169,7 +169,7 @@ elif menu == "📋 รายงานและสรุปผล":
             display_df['ราคาขาย'] = display_df['ราคาขาย'].apply(lambda x: f"{x:,.0f}")
             display_df.index = range(1, len(display_df) + 1)
 
-            # ตารางแบบบีบช่องไฟ และสูงพอสำหรับ 10 คัน
+            # ตารางแบบบีบช่องไฟ และสูงพอสำหรับ 24 คัน
             st.dataframe(
                 display_df.style.apply(apply_color_logic, axis=1),
                 use_container_width=True,
@@ -214,4 +214,5 @@ elif menu == "🗑️ จัดการฐานข้อมูล":
             if st.button("🚨 ลบถาวร", type="primary"):
                 requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
                 st.error("ลบสำเร็จ"); st.cache_data.clear(); time.sleep(1); st.rerun()
+
 
