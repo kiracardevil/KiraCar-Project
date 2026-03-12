@@ -6,11 +6,6 @@ import time
 import plotly.express as px
 
 # --- CSS Design ---
-/* เพิ่มสไตล์สีสำหรับตาราง */
-    .status-green { color: #28a745 !important; font-weight: bold; }
-    .status-red { color: #dc3545 !important; font-weight: bold; }
-    .status-blue { color: #007bff !important; font-weight: bold; }
-    .price-green { color: #218838 !important; font-weight: bold; }
 st.markdown("""
     <style>
     /* พื้นหลังหลัก */
@@ -18,36 +13,28 @@ st.markdown("""
     
     /* ปรับแต่ง Sidebar */
     [data-testid="stSidebar"] {
-        background-color: #1a1c23; /* สีดำเข้มแบบเดิม */
+        background-color: #1a1c23;
     }
     
     /* บังคับสีตัวอักษรใน Sidebar ให้ขาวชัดเจน */
-    [data-testid="stSidebar"] .st-emotion-cache-17fal9r, 
     [data-testid="stSidebar"] p, 
     [data-testid="stSidebar"] span,
     [data-testid="stSidebar"] h1,
     [data-testid="stSidebar"] label {
         color: #FFFFFF !important;
-        font-weight: 500; /* เพิ่มความหนาเล็กน้อยให้อ่านง่าย */
+        font-weight: 500;
     }
 
-    /* ปรับสีปุ่ม Radio (เมนู) ขณะเลือกและไม่เลือก */
+    /* ปรับสีปุ่ม Radio (เมนู) */
     [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {
         color: #FFFFFF !important;
-        background-color: rgba(255, 255, 255, 0.05); /* ใส่พื้นหลังจางๆ ให้ดูเป็นปุ่ม */
+        background-color: rgba(255, 255, 255, 0.05);
         margin-bottom: 5px;
         padding: 8px 15px;
         border-radius: 8px;
     }
 
-    /* สเปคพิเศษสำหรับตัวที่กำลังถูกเลือก (Active) */
-    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] p {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #00d4ff !important; /* สีฟ้าสว่างสำหรับหัวข้อ */
-    }
-
-    /* การ์ด Metric ในหน้า Dashboard */
+    /* การ์ด Metric */
     .stMetric { 
         background-color: #ffffff; 
         padding: 15px; 
@@ -259,6 +246,7 @@ elif menu == "🗑️ จัดการฐานข้อมูล":
             if st.button("🚨 ลบถาวร", type="primary"):
                 requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
                 st.error("ลบสำเร็จ"); st.cache_data.clear(); time.sleep(1); st.rerun()
+
 
 
 
