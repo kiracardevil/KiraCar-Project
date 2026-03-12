@@ -38,6 +38,9 @@ def load_full_data():
 
 df = load_full_data()
 
+# รายชื่อเกรดที่กำหนดใหม่
+GRADE_OPTIONS = ["A+", "A", "B+", "B", "C+", "C", "D"]
+
 # --- SIDEBAR ---
 st.sidebar.title("💎 KiraCar BI")
 menu = st.sidebar.radio("ระบบบริหารจัดการ", 
@@ -55,10 +58,11 @@ if menu == "📊 แผงควบคุม BI":
         st.markdown("---")
         c1, c2 = st.columns(2)
         with c1:
-            st.subheader("📈 สัดส่วนกำไรตามเกรดรถ")
+            st.subheader("📈 สัดส่วนกำไรตามเกรดรถ (A+ ถึง D)")
             plot_df = df[df['กำไรสุทธิ']>0]
             if not plot_df.empty:
-                fig = px.pie(plot_df, values='กำไรสุทธิ', names='เกรดรถ', hole=0.4)
+                fig = px.pie(plot_df, values='กำไรสุทธิ', names='เกรดรถ', hole=0.4,
+                             category_orders={"เกรดรถ": GRADE_OPTIONS})
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("ยังไม่มีข้อมูลกำไร")
@@ -73,7 +77,7 @@ elif menu == "🔍 คลังรถยนต์":
     search = st.text_input("พิมพ์รุ่นรถที่ต้องการค้นหา...")
     filtered = df[df['ยี่ห้อ/รุ่น'].str.contains(search, case=False)] if search else df
     for _, row in filtered.iterrows():
-        with st.expander(f"ID: {row['ID']} | {row['ยี่ห้อ/รุ่น']} | {row['สถานะ']}"):
+        with st.expander(f"ID: {row['ID']} | {row['ยี่ห้อ/รุ่น']} | เกรด: {row['เกรดรถ']} | {row['สถานะ']}"):
             col1, col2 = st.columns([1, 2])
             with col1:
                 st.image(row['ลิงก์รูปภาพ'] if pd.notna(row['ลิงก์รูปภาพ']) else "https://via.placeholder.com/300x200")
@@ -81,6 +85,7 @@ elif menu == "🔍 คลังรถยนต์":
                 st.write(f"**ต้นทุนรวม (F):** {int(row['ต้นทุนรวม']):,} ฿")
                 st.write(f"**ราคาขาย:** {int(row['ราคาขาย']):,} ฿")
                 st.write(f"**กำไร:** {int(row['กำไรสุทธิ']):,} ฿")
+                st.write(f"**หมายเหตุ:** {row['หมายเหตุ']}")
 
 # --- 3. บันทึกรถเข้า ---
 elif menu == "📥 ลงทะเบียนรถเข้า":
@@ -93,25 +98,22 @@ elif menu == "📥 ลงทะเบียนรถเข้า":
             fix = st.number_input("ค่าซ่อม (E)", min_value=0, step=1, format="%d")
         with c2:
             sell = st.number_input("ราคาขายเป้าหมาย (G)", min_value=0, step=1, format="%d")
-            grade = st.selectbox("เกรดสภาพรถ (L)", ["A+", "A", "B+", "B", "C"])
+            grade = st.selectbox("เกรดสภาพรถ (L)", GRADE_OPTIONS) # อัปเดตถึงเกรด D
         img = st.text_input("ลิงก์รูปภาพ (J)")
         note = st.text_area("หมายเหตุ (K)")
         
         if st.form_submit_button("🚀 บันทึกข้อมูล"):
-            # คำนวณเป็นจำนวนเต็ม
             total_cost = int(buy + fix)
-            # ถ้าราคาขายเป็น 0 กำไรต้องเป็น 0
             profit = int(sell - total_cost) if sell > 0 else 0
-            
             new_car = [int(len(df)+1), name, "กำลังซ่อม", int(buy), int(fix), total_cost, int(sell), profit, datetime.now().strftime("%Y-%m-%d"), img, note, grade]
             requests.post(SCRIPT_URL, json=new_car)
-            st.success(f"บันทึกเรียบร้อย! ทุนรวม {total_cost:,} ฿"); st.cache_data.clear(); time.sleep(1); st.rerun()
+            st.success(f"บันทึกสำเร็จ! เกรดรถ: {grade}"); st.cache_data.clear(); time.sleep(1); st.rerun()
 
 # --- 4. อัปเดตสถานะ/ค่าซ่อม ---
 elif menu == "🔄 อัปเดตสถานะ/ค่าซ่อม":
-    st.title("🔄 อัปเดตสถานะและเพิ่มค่าซ่อม")
+    st.title("🔄 อัปเดตสถานะและเกรดรถ")
     if not df.empty:
-        car_list = df.apply(lambda x: f"{x['ID']} | {x['ยี่ห้อ/รุ่น']} ({x['สถานะ']})", axis=1).tolist()
+        car_list = df.apply(lambda x: f"{x['ID']} | {x['ยี่ห้อ/รุ่น']} (เกรดเดิม: {x['เกรดรถ']})", axis=1).tolist()
         target = st.selectbox("เลือกรถที่ต้องการอัปเดต:", car_list)
         tid = target.split(" | ")[0]
         row = df[df['ID'].astype(str) == tid].iloc[0]
@@ -122,22 +124,24 @@ elif menu == "🔄 อัปเดตสถานะ/ค่าซ่อม":
                 new_status = st.selectbox("เปลี่ยนสถานะเป็น:", ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"], 
                                           index=["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"].index(row['สถานะ']) if row['สถานะ'] in ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"] else 0)
                 new_sell = st.number_input("ปรับราคาขาย (G)", value=int(row['ราคาขาย']), step=1, format="%d")
+                # เพิ่มการแก้ไขเกรดในหน้านี้ด้วย
+                current_grade = row['เกรดรถ'] if row['เกรดรถ'] in GRADE_OPTIONS else "C"
+                new_grade = st.selectbox("แก้ไขเกรดรถ (L):", GRADE_OPTIONS, index=GRADE_OPTIONS.index(current_grade))
             with c2:
                 new_fix = st.number_input("ยอดค่าซ่อมรวมใหม่ (E)", value=int(row['ค่าซ่อม']), step=1, format="%d")
                 new_note = st.text_area("บันทึกเพิ่มเติม (K)", value=str(row['หมายเหตุ']) if pd.notna(row['หมายเหตุ']) else "")
             
             if st.form_submit_button("✅ อัปเดตข้อมูล"):
                 total_f = int(row['ต้นทุนซื้อ'] + new_fix)
-                # ถ้าราคาขายใหม่เป็น 0 กำไรต้องเป็น 0
                 profit_h = int(new_sell - total_f) if new_sell > 0 else 0
-                
-                payload = {"action": "update", "id": tid, "status": new_status, "fix": int(new_fix), "total_cost": total_f, "sell": int(new_sell), "profit": profit_h, "note": new_note}
+                # ต้องแก้ไข Apps Script ให้รองรับการบันทึก Grade (L) เพิ่มด้วยถ้าต้องการให้ลง Sheet
+                payload = {"action": "update", "id": tid, "status": new_status, "fix": int(new_fix), "total_cost": total_f, "sell": int(new_sell), "profit": profit_h, "note": new_note, "grade": new_grade}
                 requests.post(SCRIPT_URL, json=payload)
-                st.success(f"อัปเดตสำเร็จ! ทุนรวมใหม่ {total_f:,} ฿"); st.cache_data.clear(); time.sleep(1); st.rerun()
+                st.success(f"อัปเดตสำเร็จ! เกรดใหม่: {new_grade}"); st.cache_data.clear(); time.sleep(1); st.rerun()
 
 # --- 5. จัดการฐานข้อมูล ---
 elif menu == "🗑️ จัดการฐานข้อมูล":
-    st.title("🗑️ ระบบลบข้อมูล (ปลอดภัย)")
+    st.title("🗑️ ระบบลบข้อมูล")
     if not df.empty:
         target = st.selectbox("เลือกรถที่ต้องการลบ:", df.apply(lambda x: f"{x['ID']} | {x['ยี่ห้อ/รุ่น']}", axis=1))
         tid = target.split(" | ")[0]
