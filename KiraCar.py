@@ -3,50 +3,69 @@ import pandas as pd
 import requests
 from datetime import datetime
 
-# --- CONFIG ---
-SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyaLT8rknu6I3ChgQTxfikMEnPn69yBZOcuM_tLn8ggN01uTKuD7UB-XwqUxdQ15-miWQ/exec"
+# --- CONFIG (อัปเดต URL ใหม่ที่คุณให้มา) ---
+SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxSuqMXP6sAXrf7oQPz1psUuBJRqpCcghAte_ePj-vU1J1NVVevomPr3vWRpTHjM6rSJg/exec"
 SHEET_ID = "1xQqrXTZ5lDCPuRcNfYDUjLqmZ3PVNtbW4s9Ot1ejHYo"
 SHEET_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv"
 
-st.set_page_config(page_title="KiraCar System", layout="wide")
+st.set_page_config(page_title="KiraCar System", layout="wide", page_icon="🏎️")
 
-# ฟังก์ชันดึงข้อมูล (แบบไม่ใช้ Cache ถ้าแอปยังล่มอยู่)
-def load_data_direct():
+# ฟังก์ชันดึงข้อมูลแบบสด (Direct) - ไม่ใช้ Cache เพื่อป้องกัน Loop
+def load_data():
     try:
         return pd.read_csv(SHEET_URL)
     except:
         return pd.DataFrame()
 
-st.title("🏎️ KiraCar ERP")
+# --- UI ส่วนหัว ---
+st.title("🏎️ KiraCar ERP System")
+st.markdown("---")
 
-# --- SIDEBAR ---
-menu = st.sidebar.radio("เมนูใช้งาน", ["📊 ดูตารางรถ", "🔄 อัปเดตสถานะ (คำนวณทุน)", "📥 บันทึกรถใหม่"])
+# --- SIDEBAR MENU ---
+menu = st.sidebar.radio("เมนูหลัก", ["📊 ดูสต็อกรถปัจจุบัน", "🔄 อัปเดตสถานะ/ค่าซ่อม", "📥 บันทึกรถเข้าใหม่"])
 
-# --- 1. ดูตารางรถ ---
-if menu == "📊 ดูตารางรถ":
-    df = load_data_direct()
+# --- 1. ดูสต็อกรถ ---
+if menu == "📊 ดูสต็อกรถปัจจุบัน":
+    st.subheader("📋 รายการรถทั้งหมดในระบบ")
+    df = load_data()
     if not df.empty:
-        st.dataframe(df)
+        # แสดงตารางแบบเต็มความกว้าง
+        st.dataframe(df, use_container_width=True)
+        
+        # สรุปภาพรวมสั้นๆ
+        c1, c2 = st.columns(2)
+        c1.metric("จำนวนรถในระบบ", f"{len(df)} คัน")
+        if 'ต้นทุนรวม' in df.columns:
+            st.metric("เงินลงทุนรวม (คอลัมน์ F)", f"{df['ต้นทุนรวม'].sum():,.0f} ฿")
     else:
-        st.error("ไม่สามารถโหลดข้อมูลได้ หรือตารางว่างเปล่า")
+        st.info("กำลังโหลดข้อมูล หรือยังไม่มีรถในระบบ")
 
-# --- 2. อัปเดตสถานะ (คำนวณ F = D + E) ---
-elif menu == "🔄 อัปเดตสถานะ (คำนวณทุน)":
-    df = load_data_direct()
+# --- 2. อัปเดตสถานะ (ที่โปรแกรมจะคำนวณ F = D + E ให้) ---
+elif menu == "🔄 อัปเดตสถานะ/ค่าซ่อม":
+    st.subheader("⚙️ แก้ไขข้อมูลรถและคำนวณต้นทุนอัตโนมัติ")
+    df = load_data()
     if not df.empty:
-        # ดึงรายชื่อมาให้เลือก
-        car_list = df.apply(lambda x: f"{x['ID']} - {x['ยี่ห้อ/รุ่น']}", axis=1).tolist()
-        choice = st.selectbox("เลือกรถ:", car_list)
-        tid = choice.split(" - ")[0]
+        # สร้างตัวเลือกจาก ID และชื่อรถ
+        car_options = df.apply(lambda x: f"{x['ID']} | {x['ยี่ห้อ/รุ่น']}", axis=1).tolist()
+        selected_car = st.selectbox("เลือกรถที่ต้องการอัปเดต:", car_options)
+        
+        # ดึง ID และข้อมูลแถวนั้นมา
+        tid = selected_car.split(" | ")[0]
         row = df[df['ID'].astype(str) == tid].iloc[0]
 
-        with st.form("edit_form"):
-            new_status = st.selectbox("สถานะ:", ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"])
-            new_fix = st.number_input("ค่าซ่อมสะสม (฿)", value=float(row['ค่าซ่อม']))
-            new_sell = st.number_input("ราคาขาย (฿)", value=float(row['ราคาขาย']))
+        with st.form("update_form"):
+            st.info(f"รถคันที่เลือก: {row['ยี่ห้อ/รุ่น']} (ทุนซื้อเดิม: {row['ต้นทุนซื้อ']:,.0f} ฿)")
             
-            if st.form_submit_button("บันทึกข้อมูล"):
-                # คำนวณต้นทุนรวม (F) ส่งไปแทนสูตร Excel
+            col1, col2 = st.columns(2)
+            with col1:
+                new_status = st.selectbox("สถานะใหม่:", ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"])
+                new_sell = st.number_input("ราคาขาย (฿)", value=float(row['ราคาขาย']))
+            with col2:
+                new_fix = st.number_input("ค่าซ่อมรวมสะสม (฿)", value=float(row['ค่าซ่อม']))
+                new_note = st.text_area("บันทึกเพิ่มเติม", value=str(row['หมายเหตุ']) if pd.notna(row['หมายเหตุ']) else "")
+            
+            if st.form_submit_button("✅ บันทึกและคำนวณลงคอลัมน์ F"):
+                # --- คำนวณแทนสูตร Excel ---
                 total_cost = float(row['ต้นทุนซื้อ']) + new_fix
                 
                 payload = {
@@ -54,24 +73,40 @@ elif menu == "🔄 อัปเดตสถานะ (คำนวณทุน)"
                     "id": tid,
                     "status": new_status,
                     "fix": new_fix,
-                    "total_cost": total_cost,
+                    "total_cost": total_cost, # ส่งไปลงคอลัมน์ F
                     "sell": new_sell,
-                    "profit": "",
-                    "note": "Update via App"
+                    "profit": "", # กำไรว่างไว้ก่อนตามโจทย์
+                    "note": new_note
                 }
-                requests.post(SCRIPT_URL, json=payload)
-                st.success(f"บันทึกสำเร็จ! ต้นทุนรวม (F) = {total_cost:,.0f}")
-                st.info("กรุณาเปลี่ยนเมนูเพื่อรีเฟรชข้อมูล")
+                
+                try:
+                    response = requests.post(SCRIPT_URL, json=payload, timeout=10)
+                    if response.status_code == 200:
+                        st.success(f"อัปเดต ID {tid} สำเร็จ! ระบบคำนวณต้นทุนรวมให้แล้ว: {total_cost:,.0f} ฿")
+                        st.balloons()
+                    else:
+                        st.error("ส่งข้อมูลไม่สำเร็จ กรุณาเช็คการตั้งค่า Apps Script")
+                except:
+                    st.error("การเชื่อมต่อหมดเวลา (Timeout)")
 
-# --- 3. บันทึกรถใหม่ ---
-elif menu == "📥 บันทึกรถใหม่":
-    df = load_data_direct()
-    with st.form("add_form"):
-        name = st.text_input("ยี่ห้อ/รุ่น")
-        buy = st.number_input("ทุนซื้อ")
-        fix = st.number_input("ค่าซ่อมเริ่มแรก")
-        if st.form_submit_button("ลงทะเบียนรถ"):
-            total = buy + fix # คำนวณ F
-            data = [len(df)+1, name, "กำลังซ่อม", buy, fix, total, 0, "", datetime.now().strftime("%Y-%m-%d"), "", "", "B"]
-            requests.post(SCRIPT_URL, json=data)
-            st.success("บันทึกรถใหม่เรียบร้อย!")
+# --- 3. บันทึกรถเข้าใหม่ ---
+elif menu == "📥 บันทึกรถเข้าใหม่":
+    st.subheader("🆕 เพิ่มรถคันใหม่ลงฐานข้อมูล")
+    df = load_data()
+    with st.form("add_car_form"):
+        name = st.text_input("ยี่ห้อ/รุ่นรถ")
+        buy = st.number_input("ราคาทุนที่ซื้อมา (฿)", min_value=0)
+        fix = st.number_input("ค่าซ่อมเริ่มต้น (฿)", min_value=0)
+        sell_target = st.number_input("ราคาขายตั้งเป้า (฿)", min_value=0)
+        
+        if st.form_submit_button("🚀 บันทึกเข้าระบบ"):
+            if name:
+                # คำนวณต้นทุนรวม (F) ทันที
+                total = buy + fix
+                # ลำดับข้อมูล A-L
+                new_data = [len(df)+1, name, "กำลังซ่อม", buy, fix, total, sell_target, "", datetime.now().strftime("%Y-%m-%d"), "", "", "B"]
+                
+                requests.post(SCRIPT_URL, json=new_data)
+                st.success(f"บันทึก {name} เรียบร้อยแล้ว! คอลัมน์ F = {total:,.0f}")
+            else:
+                st.warning("กรุณากรอกชื่อรุ่นรถ")
