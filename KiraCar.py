@@ -65,10 +65,33 @@ if menu == "💎 แผงควบคุม BI":
         c1, c2 = st.columns([1, 1])
         with c1:
             st.subheader("📊 กำไรแยกตามเกรดรถ (A/B/C)")
-            if 'เกรดรถ' in df.columns:
-                temp_df = df.copy().fillna('N/A')
-                fig_grade = px.sunburst(temp_df, path=['เกรดรถ', 'สถานะ'], values='กำไรสุทธิ', color='เกรดรถ')
-                st.plotly_chart(fig_grade, use_container_width=True)
+            if 'เกรดรถ' in df.columns and not df.empty:
+                try:
+                    # เตรียมข้อมูลสำหรับ Sunburst
+                    temp_df = df.copy()
+                    temp_df['เกรดรถ'] = temp_df['เกรดรถ'].fillna('N/A')
+                    temp_df['สถานะ'] = temp_df['สถานะ'].fillna('N/A')
+                    
+                    # Sunburst แสดงผลได้เฉพาะค่าที่เป็นบวก (กรองค่าที่กำไรเป็น 0 หรือติดลบออกเพื่อไม่ให้กราฟ Error)
+                    plot_df = temp_df[temp_df['กำไรสุทธิ'] > 0]
+                    
+                    if not plot_df.empty:
+                        fig_grade = px.sunburst(
+                            plot_df, 
+                            path=['เกรดรถ', 'สถานะ'], 
+                            values='กำไรสุทธิ', 
+                            color='เกรดรถ',
+                            color_discrete_sequence=px.colors.qualitative.Pastel
+                        )
+                        # เพิ่มการแสดงตัวเลขเงินในกราฟ
+                        fig_grade.update_traces(textinfo="label+value")
+                        st.plotly_chart(fig_grade, use_container_width=True)
+                    else:
+                        st.info("ยังไม่มีข้อมูลกำไรที่เป็นบวกเพื่อแสดงกราฟ")
+                except:
+                    st.warning("โครงสร้างข้อมูลไม่เพียงพอสำหรับสร้างกราฟ Sunburst")
+            else:
+                st.info("💡 แนะนำ: เพิ่มคอลัมน์ 'เกรดรถ' และข้อมูลใน Sheets")
         with c2:
             st.subheader("🔥 Inventory Velocity")
             sold_cars = df[df['สถานะ']=='ขายแล้ว']
@@ -192,4 +215,5 @@ elif menu == "🗑️ ล้างฐานข้อมูล":
             st.info("กรุณาติ๊กถูกที่ช่องยืนยันด้านบนเพื่อปลดล็อคปุ่มลบ")
     else:
         st.info("ไม่มีข้อมูลในฐานข้อมูล")
+
 
