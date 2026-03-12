@@ -123,15 +123,47 @@ elif menu == "📥 ลงทะเบียนรถเข้า":
                 time.sleep(1)
                 st.rerun()
 
-# --- 4. จัดการฐานข้อมูล ---
+# --- 4. จัดการฐานข้อมูล (ฉบับเน้นความปลอดภัย) ---
 elif menu == "🗑️ จัดการฐานข้อมูล":
-    st.title("🗑️ ลบข้อมูลรถ")
+    st.title("🗑️ ระบบลบข้อมูลรถยนต์")
+    st.warning("คำเตือน: การลบข้อมูลจะเป็นการลบถาวรจาก Google Sheets ไม่สามารถเรียกคืนได้")
+    
     if not df.empty:
-        target = st.selectbox("เลือกรถที่ต้องการลบ:", df.apply(lambda x: f"{x['ID']} | {x['ยี่ห้อ/รุ่น']}", axis=1))
+        # 1. เลือกรถที่ต้องการลบ
+        target_options = df.apply(lambda x: f"{x['ID']} | {x['ยี่ห้อ/รุ่น']} (ทุน: {x['ต้นทุนรวม']:,.0f} ฿)", axis=1).tolist()
+        target = st.selectbox("เลือกรถที่ต้องการลบออกจากฐานข้อมูล:", target_options)
+        
+        # ดึง ID ออกมา
         tid = target.split(" | ")[0]
-        if st.button("🚨 ยืนยันการลบถาวร", type="primary"):
-            requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
-            st.error(f"ลบ ID {tid} เรียบร้อยแล้ว")
-            st.cache_data.clear()
-            time.sleep(1)
-            st.rerun()
+        selected_row = df[df['ID'].astype(str) == tid].iloc[0]
+        
+        # 2. แสดงรายละเอียดรถที่จะลบเพื่อความมั่นใจ
+        st.error(f"⚠️ คุณกำลังจะลบ: {selected_row['ยี่ห้อ/รุ่น']}")
+        st.write(f"ID: {tid} | สถานะ: {selected_row['สถานะ']} | ทุนซื้อ: {selected_row['ต้นทุนซื้อ']:,.0f} ฿")
+        
+        st.markdown("---")
+        
+        # 3. ขั้นตอนการยืนยัน (Double Verification)
+        st.subheader("ยืนยันการทำรายการ")
+        confirm_check = st.checkbox(f"ฉันยืนยันว่าต้องการลบข้อมูลรถ ID {tid} นี้ออกจากระบบจริงๆ")
+        
+        # ปุ่มลบจะขึ้นมาให้กด "ก็ต่อเมื่อ" ติ๊กถูกที่ Checkbox เท่านั้น
+        if confirm_check:
+            if st.button("🚨 ยืนยันการลบถาวร", type="primary", use_container_width=True):
+                with st.spinner("กำลังลบข้อมูลจาก Google Sheets..."):
+                    try:
+                        res = requests.post(SCRIPT_URL, json={"action": "delete", "id": tid}, timeout=10)
+                        if res.status_code == 200:
+                            st.success(f"ลบข้อมูล ID {tid} สำเร็จเรียบร้อยแล้ว!")
+                            st.cache_data.clear()
+                            time.sleep(1.5)
+                            st.rerun()
+                        else:
+                            st.error("เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ ไม่สามารถลบได้")
+                    except:
+                        st.error("การเชื่อมต่อล้มเหลว")
+        else:
+            st.info("💡 กรุณาติ๊กถูกที่ช่อง 'ฉันยืนยัน...' ด้านบนเพื่อปลดล็อกปุ่มลบ")
+            
+    else:
+        st.info("ไม่มีข้อมูลในระบบให้ลบ")
