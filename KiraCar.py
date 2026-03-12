@@ -87,7 +87,7 @@ elif menu == "🔍 ค้นหา & วิเคราะห์รถ":
         elif sort_by == "จอดนานที่สุด": df = df.sort_values('อายุสต็อก', ascending=False)
         elif sort_by == "ต้นทุนรวมต่ำสุด": df = df.sort_values('ต้นทุนรวม', ascending=True)
 
-        search = st.text_input("ค้นหารุ่นรถที่ต้องการ...")
+        search = st.text_input("🔍 ค้นหารุ่นรถที่ต้องการ...")
         filtered = df[df['ยี่ห้อ/รุ่น'].str.contains(search, case=False)] if search else df
 
         for _, row in filtered.iterrows():
@@ -98,13 +98,20 @@ elif menu == "🔍 ค้นหา & วิเคราะห์รถ":
                     st.image(img, use_column_width=True)
                 with col2:
                     st.markdown(f"### {row['ยี่ห้อ/รุ่น']} <span style='font-size:14px; background:#e1f5fe; padding:2px 8px; border-radius:5px;'>ID: {row['ID']}</span>", unsafe_allow_html=True)
-                    sub1, sub2, sub3 = st.columns(3)
-                    sub1.write(f"**💰 ราคาขาย:** {row['ราคาขาย']:,.0f}")
-                    sub2.write(f"**🛠 ต้นทุนรวม (F):** {row['ต้นทุนรวม']:,.0f}")
-                    sub3.write(f"**📈 ROI:** {row['ROI (%)']:.1f}%")
+                    
+                    # แบ่งเป็น 4 คอลัมน์ย่อยเพื่อให้โชว์ครบทั้ง ราคาขาย, ทุนซื้อ, ค่าซ่อม และ ROI
+                    sub1, sub2, sub3, sub4 = st.columns(4)
+                    sub1.write(f"**💰 ราคาขาย:**\n{row['ราคาขาย']:,.0f}")
+                    sub2.write(f"**💵 ทุนซื้อ:**\n{row['ต้นทุนซื้อ']:,.0f}")
+                    sub3.write(f"**🛠️ ค่าซ่อม:**\n{row['ค่าซ่อม']:,.0f}")
+                    sub4.write(f"**📈 ROI:**\n{row['ROI (%)']:.1f}%")
+                    
+                    st.write(f"**📊 ต้นทุนรวม (F):** {row['ต้นทุนรวม']:,.0f} ฿")
+                    
                     if row['สถานะ'] != 'ขายแล้ว' and row['อายุสต็อก'] > 45:
                         st.error(f"⚠️ จอดมา {row['อายุสต็อก']} วันแล้ว แนะนำให้รีบระบายออก")
-                    st.info(f"📝 หมายเหตุ: {row['หมายเหตุ']}")
+                    
+                    st.info(f"📝 **หมายเหตุ:** {row['หมายเหตุ']}")
                 st.markdown("---")
 
 # --- 3. บันทึกรถเข้า (ปรับตามลำดับใหม่) ---
@@ -161,4 +168,5 @@ elif menu == "🗑️ ล้างฐานข้อมูล":
             st.error(f"ลบ ID {tid} เรียบร้อย")
             time.sleep(1)
             st.rerun()
+
 
