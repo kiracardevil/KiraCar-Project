@@ -38,7 +38,7 @@ df = load_full_data()
 # --- SIDEBAR ---
 st.sidebar.image("https://cdn-icons-png.flaticon.com/512/741/741407.png", width=100)
 st.sidebar.title("KiraCar Enterprise")
-# รวมเมนูทั้งหมดไว้ที่นี่ที่เดียว
+# รวมเมนูทั้งหมดไว้ที่นี่
 menu = st.sidebar.radio("เมนูบริหารจัดการ", ["💎 แผงควบคุม BI", "🔍 ค้นหา & วิเคราะห์รถ", "🔄 อัปเดตสถานะรถ", "📥 บันทึกรถเข้า", "🗑️ ล้างฐานข้อมูล"])
 
 # --- 1. แผงควบคุม BI ---
@@ -89,7 +89,6 @@ elif menu == "🔍 ค้นหา & วิเคราะห์รถ":
                 s3.write(f"**🛠️ ซ่อม:** {row['ค่าซ่อม']:,.0f}")
                 s4.write(f"**📈 ROI:** {row['ROI (%)']:.1f}%")
                 st.write(f"**📊 ต้นทุนรวม:** {row['ต้นทุนรวม']:,.0f} ฿")
-                st.info(f"📝 {row['หมายเหตุ']}")
             st.markdown("---")
 
 # --- 3. อัปเดตสถานะรถ ---
@@ -105,7 +104,6 @@ elif menu == "🔄 อัปเดตสถานะรถ":
             col1, col2 = st.columns(2)
             with col1:
                 status_list = ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"]
-                # แก้ไขจุดที่สะกดผิด 'สถาน e' เป็น 'สถานะ'
                 current_idx = status_list.index(target_row['สถานะ']) if target_row['สถานะ'] in status_list else 0
                 new_status = st.selectbox("เปลี่ยนสถานะเป็น:", status_list, index=current_idx)
                 new_sell_price = st.number_input("ราคาขายจริง", value=float(target_row['ราคาขาย']))
@@ -116,23 +114,11 @@ elif menu == "🔄 อัปเดตสถานะรถ":
             if st.form_submit_button("✅ ยืนยันการอัปเดต"):
                 total_cost = float(target_row['ต้นทุนซื้อ']) + new_fix_cost
                 new_profit = new_sell_price - total_cost if new_status == "ขายแล้ว" else 0
-                
-                payload = {
-                    "action": "update",
-                    "id": tid,
-                    "status": new_status,
-                    "fix": new_fix_cost,
-                    "total_cost": total_cost,
-                    "sell": new_sell_price,
-                    "profit": new_profit,
-                    "note": new_note
-                }
+                payload = {"action": "update", "id": tid, "status": new_status, "fix": new_fix_cost, "total_cost": total_cost, "sell": new_sell_price, "profit": new_profit, "note": new_note}
                 requests.post(SCRIPT_URL, json=payload)
                 st.success("อัปเดตข้อมูลสำเร็จ!")
                 time.sleep(1)
                 st.rerun()
-    else:
-        st.info("ไม่มีข้อมูลในระบบ")
 
 # --- 4. บันทึกรถเข้า ---
 elif menu == "📥 บันทึกรถเข้า":
@@ -150,10 +136,9 @@ elif menu == "📥 บันทึกรถเข้า":
         with c3:
             img = st.text_input("ลิงก์รูปภาพ")
             note = st.text_area("หมายเหตุ")
-            
         if st.form_submit_button("🚀 บันทึกข้อมูล"):
             total = buy + fix
-            profit = sell - total if sell > 0 else 0
+            profit = sell - total
             new_row = [len(df)+1, name, status, buy, fix, total, sell, profit, datetime.now().strftime("%Y-%m-%d %H:%M"), img, note, grade]
             requests.post(SCRIPT_URL, json=new_row)
             st.balloons()
@@ -166,10 +151,9 @@ elif menu == "🗑️ ล้างฐานข้อมูล":
     if not df.empty:
         target_list = df.apply(lambda x: f"ID: {x['ID']} | {x['ยี่ห้อ/รุ่น']}", axis=1).tolist()
         target = st.selectbox("เลือกข้อมูลที่ต้องการลบ:", target_list)
-        confirm = st.checkbox("ยืนยันว่าต้องการลบข้อมูลนี้จริงๆ")
-        if confirm and st.button("🚨 ยืนยันการลบถาวร", type="primary"):
+        if st.checkbox("ยืนยันการลบ") and st.button("🚨 ยืนยันการลบถาวร", type="primary"):
             tid = target.split(" | ")[0].split(": ")[1]
             requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
-            st.error("ลบข้อมูลเรียบร้อยแล้ว")
+            st.error("ลบข้อมูลเรียบร้อย")
             time.sleep(1)
             st.rerun()
