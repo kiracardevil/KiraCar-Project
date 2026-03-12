@@ -109,66 +109,61 @@ elif menu == "📥 ลงทะเบียนรถเข้า":
             requests.post(SCRIPT_URL, json=new_car)
             st.success(f"บันทึกสำเร็จ! เกรดรถ: {grade}"); st.cache_data.clear(); time.sleep(1); st.rerun()
 
-# --- 4. อัปเดตสถานะ/ค่าซ่อม (แก้ไขเกรดได้จริง) ---
+# --- 4. อัปเดตสถานะ/ค่าซ่อม (แก้ไขให้บันทึกเกรดลงฐานข้อมูลได้จริง) ---
 elif menu == "🔄 อัปเดตสถานะ/ค่าซ่อม":
-    st.title("🔄 อัปเดตข้อมูลรถยนต์")
+    st.title("🔄 อัปเดตสถานะและเกรดรถ")
     if not df.empty:
-        # ดึงรายชื่อรถมาให้เลือก
-        car_list = df.apply(lambda x: f"{x['ID']} | {x['ยี่ห้อ/รุ่น']} (เกรด: {x['เกรดรถ']})", axis=1).tolist()
+        # ดึงชื่อคอลัมน์ให้ชัวร์ (บางทีใน df อาจเป็น 'เกรดรถ' หรือ 'Grade')
+        grade_col = 'เกรดรถ' if 'เกรดรถ' in df.columns else df.columns[-1] 
+        
+        car_list = df.apply(lambda x: f"{x['ID']} | {x['ยี่ห้อ/รุ่น']} (เกรดปัจจุบัน: {x[grade_col]})", axis=1).tolist()
         target = st.selectbox("เลือกรถที่ต้องการอัปเดต:", car_list)
         tid = target.split(" | ")[0]
         row = df[df['ID'].astype(str) == tid].iloc[0]
 
         with st.form("update_form"):
-            st.info(f"📍 แก้ไขข้อมูล ID: {tid} - {row['ยี่ห้อ/รุ่น']}")
             c1, c2 = st.columns(2)
-            
             with c1:
-                # 1. แก้ไขสถานะ
-                status_list = ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"]
-                current_status_idx = status_list.index(row['status_key']) if 'status_key' in row else 0 # ปรับตามชื่อคอลัมน์จริง
-                new_status = st.selectbox("เปลี่ยนสถานะเป็น:", status_list, 
-                                          index=status_list.index(row['สถานะ']) if row['สถานะ'] in status_list else 0)
-                
-                # 2. แก้ไขเกรด (จุดที่แก้ไข)
-                current_grade = row['เกรดรถ'] if row['เกรดรถ'] in GRADE_OPTIONS else "C"
-                new_grade = st.selectbox("ปรับเกรดรถ (L):", GRADE_OPTIONS, index=GRADE_OPTIONS.index(current_grade))
-                
+                new_status = st.selectbox("เปลี่ยนสถานะเป็น:", ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"], 
+                                          index=["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"].index(row['สถานะ']) if row['สถานะ'] in ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"] else 0)
                 new_sell = st.number_input("ปรับราคาขาย (G)", value=int(row['ราคาขาย']), step=1, format="%d")
-
+                
+                # ดึงเกรดเดิมมาตั้งต้น ถ้าหาไม่เจอให้เริ่มที่ C
+                current_grade_val = str(row[grade_col]) if grade_col in row else "C"
+                new_grade = st.selectbox("แก้ไขเกรดรถ (L):", GRADE_OPTIONS, 
+                                         index=GRADE_OPTIONS.index(current_grade_val) if current_grade_val in GRADE_OPTIONS else 5)
             with c2:
                 new_fix = st.number_input("ยอดค่าซ่อมรวมใหม่ (E)", value=int(row['ค่าซ่อม']), step=1, format="%d")
                 new_note = st.text_area("บันทึกเพิ่มเติม (K)", value=str(row['หมายเหตุ']) if pd.notna(row['หมายเหตุ']) else "")
             
-            if st.form_submit_button("✅ บันทึกการแก้ไขลงฐานข้อมูล"):
-                # Logic คำนวณใหม่
+            if st.form_submit_button("✅ ยืนยันการอัปเดต"):
                 total_f = int(row['ต้นทุนซื้อ'] + new_fix)
                 profit_h = int(new_sell - total_f) if new_sell > 0 else 0
                 
-                # Payload สำคัญ: ต้องส่ง "grade": new_grade ไปด้วย
+                # Payload ต้องชื่อ "grade" ตัวเล็กตามที่เขียนใน Apps Script
                 payload = {
                     "action": "update",
-                    "id": tid,
-                    "status": new_status,
-                    "fix": int(new_fix),
-                    "total_cost": total_f,
-                    "sell": int(new_sell),
-                    "profit": profit_h,
+                    "id": str(tid), 
+                    "status": new_status, 
+                    "fix": int(new_fix), 
+                    "total_cost": total_f, 
+                    "sell": int(new_sell), 
+                    "profit": profit_h, 
                     "note": new_note,
-                    "grade": new_grade  # << ส่งค่าเกรดใหม่ไปที่คอลัมน์ L
+                    "grade": str(new_grade) # ส่งเกรดใหม่ไปบันทึกลงคอลัมน์ L
                 }
                 
-                try:
-                    res = requests.post(SCRIPT_URL, json=payload, timeout=10)
-                    if res.status_code == 200:
-                        st.success(f"อัปเดตข้อมูลสำเร็จ! เปลี่ยนเกรดเป็น {new_grade} เรียบร้อย")
-                        st.cache_data.clear()
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        st.error("ไม่สามารถเชื่อมต่อฐานข้อมูลได้")
-                except Exception as e:
-                    st.error(f"เกิดข้อผิดพลาด: {e}")
+                # ส่งข้อมูลไป URL ใหม่ที่คุณเพิ่ง Deployment
+                NEW_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwA88e1uY4rAcErJsUxxbLRnYVscULcd3cSZugt5FByZXopK54FndJ3hZr5HYcGe0-9wQ/exec"
+                
+                response = requests.post(NEW_SCRIPT_URL, json=payload)
+                if response.status_code == 200:
+                    st.success(f"บันทึกข้อมูลเรียบร้อย! (เกรดใหม่: {new_grade})")
+                    st.cache_data.clear() # ล้างแคชเพื่อให้หน้าจอโหลดค่าใหม่จาก Sheets
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล")
 
 # --- 5. จัดการฐานข้อมูล ---
 elif menu == "🗑️ จัดการฐานข้อมูล":
@@ -180,4 +175,5 @@ elif menu == "🗑️ จัดการฐานข้อมูล":
         if confirm and st.button("🚨 ยืนยันการลบถาวร", type="primary"):
             requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
             st.error("ลบข้อมูลสำเร็จ"); st.cache_data.clear(); time.sleep(1); st.rerun()
+
 
