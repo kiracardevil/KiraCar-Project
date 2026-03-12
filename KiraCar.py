@@ -173,7 +173,7 @@ elif menu == "📋 รายงานและสรุปผล":
             st.dataframe(
                 display_df.style.apply(apply_color_logic, axis=1),
                 use_container_width=True,
-                height=450, 
+                height=900, 
                 column_config={
                     "ID": st.column_config.Column(width="small"),
                     "ยี่ห้อ/รุ่น": st.column_config.Column(width="medium"),
@@ -214,3 +214,4 @@ elif menu == "🗑️ จัดการฐานข้อมูล":
             if st.button("🚨 ลบถาวร", type="primary"):
                 requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
                 st.error("ลบสำเร็จ"); st.cache_data.clear(); time.sleep(1); st.rerun()
+
