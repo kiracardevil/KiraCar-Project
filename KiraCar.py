@@ -28,7 +28,7 @@ if st.sidebar.button("🔄 Sync ข้อมูลใหม่"):
 
 menu = st.sidebar.selectbox("เมนู", ["📊 ดูสต็อก", "🔄 อัปเดตสถานะ/ขายรถ", "📥 บันทึกรถเข้าใหม่"])
 
-# --- ส่วนที่ 2: อัปเดตสถานะ (แก้ปัญหาคอลัมน์ F ว่าง) ---
+# --- ส่วนที่ 2: อัปเดตสถานะ (เน้นแก้คอลัมน์ F) ---
 if menu == "🔄 อัปเดตสถานะ/ขายรถ":
     st.title("🔄 อัปเดตข้อมูลรถ")
     if not df.empty:
@@ -43,29 +43,31 @@ if menu == "🔄 อัปเดตสถานะ/ขายรถ":
             new_fix = st.number_input("ค่าซ่อมรวม", value=float(row['ค่าซ่อม'] if pd.notna(row['ค่าซ่อม']) else 0))
             
             if st.form_submit_button("✅ บันทึก"):
-                # คำนวณค่าก่อนส่ง (ป้องกันช่องว่าง)
+                # 1. คำนวณต้นทุนรวม (F)
                 buy_price = float(row['ต้นทุนซื้อ'] if pd.notna(row['ต้นทุนซื้อ']) else 0)
-                total_cost = buy_price + new_fix # คำนวณคอลัมน์ F
-                profit = new_sell - total_cost if new_status == "ขายแล้ว" else 0 # คำนวณคอลัมน์ H
+                total_cost = buy_price + new_fix 
+                
+                # 2. กำไร (H) - ส่งเป็นค่าว่างตามที่คุณต้องการ
+                profit = "" 
                 
                 payload = {
                     "action": "update",
                     "id": tid,
                     "status": new_status,
                     "fix": new_fix,
-                    "total_cost": total_cost, # ส่งไปที่คอลัมน์ F
+                    "total_cost": total_cost, # ส่งค่า F ไปบันทึก
                     "sell": new_sell,
-                    "profit": profit,
+                    "profit": profit,     # ส่งค่าว่างไปที่ H
                     "note": "อัปเดตผ่านระบบ"
                 }
                 requests.post(SCRIPT_URL, json=payload)
-                st.success("บันทึกสำเร็จ! ข้อมูลคอลัมน์ F จะไม่ว่างแล้วครับ")
+                st.success("บันทึกสำเร็จ! คอลัมน์ F (ต้นทุนรวม) ได้รับการอัปเดตแล้ว")
                 st.cache_data.clear()
                 time.sleep(1)
                 st.rerun()
 
 # --- ส่วนที่ 3: บันทึกรถเข้าใหม่ ---
-elif menu == "📥 บันทึกรถเข้าใหม่":
+elif menu == "📥 บันทึกรถใหม่":
     st.title("📥 บันทึกรถใหม่")
     with st.form("add_form"):
         name = st.text_input("ยี่ห้อ/รุ่น")
@@ -75,10 +77,22 @@ elif menu == "📥 บันทึกรถเข้าใหม่":
         
         if st.form_submit_button("🚀 บันทึก"):
             total = buy + fix # คำนวณคอลัมน์ F
-            profit = sell - total
-            # ส่งข้อมูลเรียงตาม A-L (คอลัมน์ F คือตัวที่ 6)
-            data = [len(df)+1, name, "กำลังซ่อม", buy, fix, total, sell, profit, datetime.now().strftime("%Y-%m-%d"), "", "", "B"]
+            profit = ""       # ส่งเป็นค่าว่างไปก่อน
+            
+            # ลำดับข้อมูล A-L (ID, ชื่อ, สถานะ, ทุนซื้อ, ค่าซ่อม, ต้นทุนรวม(F), ราคาขาย, กำไร(H), ...)
+            data = [
+                len(df)+1, name, "กำลังซ่อม", buy, fix, 
+                total,  # คอลัมน์ F
+                sell, 
+                profit, # คอลัมน์ H
+                datetime.now().strftime("%Y-%m-%d"), "", "", "B"
+            ]
             requests.post(SCRIPT_URL, json=data)
-            st.success("บันทึกเข้าระบบแล้ว!")
+            st.success("บันทึกเข้าระบบแล้ว! (คอลัมน์ F มีข้อมูลแล้ว)")
             st.cache_data.clear()
             st.rerun()
+
+# --- ส่วนที่ 1: ดูสต็อก ---
+elif menu == "📊 ดูสต็อก":
+    st.title("📊 รายการสต็อกปัจจุบัน")
+    st.dataframe(df, use_container_width=True)
