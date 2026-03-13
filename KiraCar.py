@@ -167,9 +167,6 @@ elif menu == "🔄 อัปเดตสถานะ/ค่าซ่อม":
                 new_status = st.selectbox("เปลี่ยนสถานะเป็น:", ["กำลังซ่อม", "พร้อมขาย", "ขายแล้ว"], index=status_index)
                 
                 new_sell = st.number_input("ปรับราคาขาย (G)", value=int(row['ราคาขาย']), step=1)
-                # ใส่ไว้ในฝั่ง c1 หรือใต้ช่อง new_sell
-current_profit = new_sell - (row['ต้นทุนซื้อ'] + new_fix)
-st.caption(f"💡 กำไรคาดการณ์: {int(current_profit):,} ฿")
 
                 # --- จุดที่แก้ไข: อัปเดตเกรดรถ ---
                 current_grade = str(row[target_col]).strip() # ล้างช่องว่างออก
@@ -276,6 +273,7 @@ elif menu == "🗑️ จัดการฐานข้อมูล":
             if st.button("🚨 ลบถาวร", type="primary"):
                 requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
                 st.error("ลบสำเร็จ"); st.cache_data.clear(); time.sleep(1); st.rerun()
+
 
 
 
