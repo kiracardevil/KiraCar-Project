@@ -146,8 +146,12 @@ elif menu == "🔄 อัปเดตสถานะ/ค่าซ่อม":
         # ล็อกชื่อคอลัมน์เกรดรถให้ชัดเจน
         target_col = 'เกรดรถ'
         
-        # สร้างรายชื่อรถให้เลือก
-        car_list = df.apply(lambda x: f"{x['ID']} | {x['ยี่ห้อ/รุ่น']} (เกรดเดิม: {x[target_col]})", axis=1).tolist()
+# สร้างรายชื่อรถให้เลือก: เพิ่มการโชว์ต้นทุนรวม (ทุนซื้อ + ค่าซ่อม)
+        car_list = df.apply(
+            lambda x: f"{x['ID']} | {x['ยี่ห้อ/รุ่น']} | ต้นทุนรวม: {int(x['ต้นทุนรวม']):,} ฿ (เกรดเดิม: {x[target_col]})", 
+            axis=1
+        ).tolist()
+        
         target = st.selectbox("เลือกรถที่ต้องการอัปเดต:", car_list)
         tid = target.split(" | ")[0]
         
@@ -269,6 +273,7 @@ elif menu == "🗑️ จัดการฐานข้อมูล":
             if st.button("🚨 ลบถาวร", type="primary"):
                 requests.post(SCRIPT_URL, json={"action": "delete", "id": tid})
                 st.error("ลบสำเร็จ"); st.cache_data.clear(); time.sleep(1); st.rerun()
+
 
 
 
